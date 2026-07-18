@@ -11,7 +11,7 @@ products, with a grounded conversational briefing on top.
 > in command retains final responsibility.
 
 The full technical/product plan lives in [PLAN.md](./PLAN.md). Current status:
-**M0 (project skeleton)** — see the milestone list in PLAN.md §20.
+**M1 (airport & navdata resolution)** — see the milestone list in PLAN.md §20.
 
 ## Running it locally (plain-English version)
 
@@ -35,6 +35,7 @@ PostGIS (the map-math engine) is installed.
 - `npm run lint` / `npm run typecheck` / `npm test` — static checks + unit tests
 - `npm run db:migrate` — apply SQL migrations from `drizzle/`
 - `npm run test:integration` — PostGIS tests (needs `DATABASE_URL`)
+- `npm run navdata:import` — download the OurAirports dataset and load it (run once after setup; `-- --dir path` to import local CSVs)
 - `npm run fixtures:capture` — refresh the recorded upstream weather samples
   in `fixtures/upstream/` (set `UPSTREAM_USER_AGENT` with your contact email)
 

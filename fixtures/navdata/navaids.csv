@@ -1,0 +1,6 @@
+"id","filename","ident","name","type","frequency_khz","latitude_deg","longitude_deg","elevation_ft","iso_country","dme_frequency_khz","dme_channel","dme_latitude_deg","dme_longitude_deg","dme_elevation_ft","slaved_variation_deg","magnetic_variation_deg","usageType","power","associated_airport"
+88062,"Mustang_VORTAC_US","FMG","Mustang","VORTAC",117900,39.53129959106445,-119.65599822998047,5949,"US",117900,"126X",,,,16.001,14.439,"BOTH","HIGH","KRNO"
+91839,"Oakland_VORTAC_US","OAK","Oakland","VORTAC",116800,37.72589874267578,-122.2239990234375,10,"US",116800,"115X",,,,17.001,14.426,"BOTH","HIGH","KOAK"
+93992,"St.jJseph_VORTAC_US","STJ","St.jJseph","VORTAC",115500,39.960601806640625,-94.92520141601562,1160,"US",115500,"102X",,,,8.001,3.077,,,
+93993,"Strejnic_VOR-DME_RO","STJ","Strejnic","VOR-DME",113200,44.91859817504883,25.976999282836914,545,"RO",113200,"079X",,,,,4.222,"TERMINAL","HIGH","LROP"
+93995,"St_Louis_VORTAC_US","STL","St Louis","VORTAC",117400,38.86069869995117,-90.4823989868164,450,"US",117400,"121X",,,,1.001,-0.131,"BOTH","HIGH","KSTL"

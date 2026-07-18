@@ -14,11 +14,15 @@ const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
 
 try {
   // Bootstrap: the first migration creates app_migrations itself, so tolerate
-  // its absence on a fresh database.
+  // its absence (Postgres error 42P01) on a fresh database — but nothing else,
+  // or an unreachable database would masquerade as a fresh one.
   const applied = new Set(
     await sql`SELECT id FROM app_migrations`
       .then((rows) => rows.map((r) => r.id))
-      .catch(() => []),
+      .catch((err) => {
+        if (err?.code === "42P01") return [];
+        throw err;
+      }),
   );
 
   for (const file of files) {

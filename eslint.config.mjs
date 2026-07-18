@@ -4,7 +4,13 @@ const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
 const config = [
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "fixtures/**"],
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "fixtures/**",
+      "next-env.d.ts",
+    ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
