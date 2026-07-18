@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { FetchCoordinator } from "@/lib/ingest/coordinator";
 import { briefingRequestSchema, generateBriefing } from "@/lib/briefing/generate";
+import { diffBriefings } from "@/lib/briefing/diff";
 import { importOurAirports } from "@/lib/nav/import";
 
 // End-to-end briefing generation on a real database with the captured live
@@ -164,5 +165,39 @@ describe.skipIf(!sql)("briefing generation end-to-end", () => {
       SELECT rating FROM segment_assessments WHERE snapshot_id = ${a.snapshotId} ORDER BY segment_seq
     `;
     expect(after.map((x) => x.rating)).toEqual(before.map((x) => x.rating));
+  });
+
+  it("what-changed diff: an IFR flip at departure is captured with evidence", async () => {
+    const a = await generateBriefing(sql!, fullCoordinator(), REQUEST, {
+      awcBaseUrl: TEST_BASE, nwsBaseUrl: NWS_BASE, now: NOW,
+    });
+    // Second run: KSTL goes IFR (400 ft overcast) on a NEWER observation.
+    const mutated = () => {
+      const metars = JSON.parse(fixtureBody("awc-metar-json.json")) as Record<string, unknown>[];
+      for (const m of metars) {
+        if (m.icaoId === "KSTL") {
+          m.obsTime = (m.obsTime as number) + 3600;
+          m.clouds = [{ cover: "OVC", base: 400 }];
+          m.fltCat = "LIFR";
+          m.visib = 1.5;
+          m.rawOb = "METAR KSTL 180455Z 00000KT 1 1/2SM OVC004 24/22 A3001";
+        }
+      }
+      return new Response(JSON.stringify(metars));
+    };
+    const b = await generateBriefing(sql!, fullCoordinator({ "/metar": mutated }), REQUEST, {
+      awcBaseUrl: TEST_BASE, nwsBaseUrl: NWS_BASE, now: new Date(NOW.getTime() + 3600_000),
+    });
+    const diff = (await diffBriefings(sql!, a.snapshotId, b.snapshotId))!;
+    expect(diff.sameRoute).toBe(true);
+    expect(diff.worstRating.to).toBe("red");
+    const dep = diff.ratingChanges.find((c) => c.segmentSeq === 0);
+    expect(dep).toBeDefined();
+    expect(dep!.to).toBe("red");
+    expect(dep!.toSummary).toContain("below your");
+    const metarDelta = diff.sourceDeltas.find((d) => d.sourceType === "METAR");
+    expect(metarDelta).toBeDefined();
+    expect(metarDelta!.added).toBeGreaterThan(0);
+    expect(diff.newHardStops.length).toBeGreaterThan(0);
   });
 });
