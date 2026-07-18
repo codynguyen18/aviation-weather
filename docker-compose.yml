@@ -1,0 +1,46 @@
+# Local development stack: `docker compose up` starts the database and the app.
+# The app is also runnable without Docker via `npm run dev` against the db
+# service alone (`docker compose up db`).
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: aviation
+      POSTGRES_PASSWORD: aviation
+      POSTGRES_DB: aviation_weather
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aviation -d aviation_weather"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      DATABASE_URL: postgres://aviation:aviation@db:5432/aviation_weather
+    command: sh -c "npm ci --omit=dev --ignore-scripts && node scripts/migrate.mjs"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://aviation:aviation@db:5432/aviation_weather
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

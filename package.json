@@ -1,0 +1,37 @@
+{
+  "name": "aviation-weather",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Route-aware general-aviation weather decision support (advisory only — not an official weather briefing)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:all": "vitest run",
+    "db:migrate": "node scripts/migrate.mjs",
+    "fixtures:capture": "node scripts/capture-fixtures.mjs"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "next": "^15.3.4",
+    "pino": "^9.7.0",
+    "postgres": "^3.4.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "drizzle-kit": "^0.31.1",
+    "eslint": "^9.29.0",
+    "eslint-config-next": "^15.3.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -753,7 +753,7 @@ Component highlights: `RouteMap` (maplibre-gl, deck.gl not needed at MVP), `Segm
 
 Layers (Vitest + Playwright + fixture corpus):
 
-1. **Unit** — geodesic math vs published distances (KSTL→KOAK 1,565 nm ±0.5%), climb/descent allocation, wind-component math, crosswind per runway, twilight vs USNO tables, TAF group decomposition, FB-winds decoding (incl. >100 kt & 9900 light-and-variable), FL→ft conversion.
+1. **Unit** — geodesic math vs published distances (KSTL→KOAK ≈1,499 nm (PostGIS-spheroid-verified) ±0.5%), climb/descent allocation, wind-component math, crosswind per runway, twilight vs USNO tables, TAF group decomposition, FB-winds decoding (incl. >100 kt & 9900 light-and-variable), FL→ft conversion.
 2. **API contract tests** — recorded fixture responses per upstream endpoint (committed under `fixtures/upstream/`); parsers tested against fixtures; a scheduled *live* contract job re-fetches and schema-diffs to catch upstream drift (alert, not CI-fail).
 3. **Geospatial** — PostGIS-backed tests (Testcontainers): corridor buffer widths at 30°–48°N, polygon intersection truth cases, near-miss cases (hazard 26 nm off a 25 nm corridor → no hit; 24 nm → hit), dateline not needed (CONUS) but −124°→−67° extremes covered.
 4. **Time** — segment ETAs across CT→MT→PT; DST spring-forward departure; overnight leg twilight tagging; forecast-validity association at window edges (product expiring 1 min before entry ETA → not applicable; 1 min after → applicable).
@@ -842,7 +842,7 @@ Behavioral safeguards (each mapped to a mechanism elsewhere in this plan): false
 **M0 — Scaffold & CI** (§20), sized as one reviewable PR:
 
 1. Next.js (App Router) + TypeScript + Zod + Drizzle skeleton, pino logging, health endpoint reporting DB connectivity.
-2. Docker Compose: app + `postgis/postgis:16` with a first migration that enables PostGIS and proves a geodesic round-trip (insert a KSTL→KOAK geography line, `ST_Length` ≈ 1,565 nm — the assertion doubles as the first geospatial test).
+2. Docker Compose: app + `postgis/postgis:16` with a first migration that enables PostGIS and proves a geodesic round-trip (insert a KSTL→KOAK geography line, `ST_Distance` ≈ 1,499 nm (verified live during M0) — the assertion doubles as the first geospatial test).
 3. GitHub Actions: lint, typecheck, unit tests, PostGIS integration tests via service container.
 4. `fixtures/upstream/` seeded by a small capture script that records one real response per verified endpoint in §7 (METAR/TAF/PIREP/airsigmet/gairmet/cwa/windtemp/AFD/alerts samples) so M2–M5 development runs offline from day one.
 

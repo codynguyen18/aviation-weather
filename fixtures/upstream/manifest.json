@@ -1,0 +1,162 @@
+[
+  {
+    "name": "awc-metar-json",
+    "url": "https://aviationweather.gov/api/data/metar?ids=KSTL,KOAK,KRNO&format=json",
+    "fetchedAt": "2026-07-18T04:36:47.587Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=60",
+    "lastModified": null,
+    "bytes": 1473
+  },
+  {
+    "name": "awc-metar-raw",
+    "url": "https://aviationweather.gov/api/data/metar?ids=KSTL,KOAK,KRNO&format=raw",
+    "fetchedAt": "2026-07-18T04:36:49.177Z",
+    "status": 200,
+    "contentType": "text/plain; charset=utf-8",
+    "cacheControl": "max-age=60",
+    "lastModified": null,
+    "bytes": 263
+  },
+  {
+    "name": "awc-taf-json",
+    "url": "https://aviationweather.gov/api/data/taf?ids=KSTL,KOAK,KRNO&format=json",
+    "fetchedAt": "2026-07-18T04:36:50.756Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=60",
+    "lastModified": null,
+    "bytes": 5093
+  },
+  {
+    "name": "awc-pirep-json",
+    "url": "https://aviationweather.gov/api/data/pirep?bbox=35,-115,45,-90&format=json&age=6",
+    "fetchedAt": "2026-07-18T04:36:53.169Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=30",
+    "lastModified": null,
+    "bytes": 54602
+  },
+  {
+    "name": "awc-airsigmet-geojson",
+    "url": "https://aviationweather.gov/api/data/airsigmet?format=geojson",
+    "fetchedAt": "2026-07-18T04:36:54.709Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=180",
+    "lastModified": null,
+    "bytes": 17274
+  },
+  {
+    "name": "awc-gairmet-geojson",
+    "url": "https://aviationweather.gov/api/data/gairmet?format=geojson",
+    "fetchedAt": "2026-07-18T04:36:56.808Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=60",
+    "lastModified": null,
+    "bytes": 16526
+  },
+  {
+    "name": "awc-cwa-geojson",
+    "url": "https://aviationweather.gov/api/data/cwa?format=geojson",
+    "fetchedAt": "2026-07-18T04:36:58.554Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=60",
+    "lastModified": null,
+    "bytes": 42
+  },
+  {
+    "name": "awc-windtemp-chi-low-06",
+    "url": "https://aviationweather.gov/api/data/windtemp?region=chi&level=low&fcst=06",
+    "fetchedAt": "2026-07-18T04:37:00.708Z",
+    "status": 200,
+    "contentType": "text/plain; charset=utf-8",
+    "cacheControl": "max-age=180",
+    "lastModified": "Sat, 18 Jul 2026 02:00:30 GMT",
+    "bytes": 3066
+  },
+  {
+    "name": "awc-windtemp-sfo-low-06",
+    "url": "https://aviationweather.gov/api/data/windtemp?region=sfo&level=low&fcst=06",
+    "fetchedAt": "2026-07-18T04:37:02.287Z",
+    "status": 200,
+    "contentType": "text/plain; charset=utf-8",
+    "cacheControl": "max-age=180",
+    "lastModified": "Sat, 18 Jul 2026 02:00:30 GMT",
+    "bytes": 1666
+  },
+  {
+    "name": "awc-stationinfo-json",
+    "url": "https://aviationweather.gov/api/data/stationinfo?ids=KSTL,KOAK,KRNO&format=json",
+    "fetchedAt": "2026-07-18T04:37:04.511Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=300",
+    "lastModified": null,
+    "bytes": 635
+  },
+  {
+    "name": "awc-airport-json",
+    "url": "https://aviationweather.gov/api/data/airport?ids=KSTL,KOAK&format=json",
+    "fetchedAt": "2026-07-18T04:37:06.078Z",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "cacheControl": "max-age=180",
+    "lastModified": null,
+    "bytes": 1371
+  },
+  {
+    "name": "nws-points-reno",
+    "url": "https://api.weather.gov/points/39.5,-119.8",
+    "fetchedAt": "2026-07-18T04:37:07.759Z",
+    "status": 200,
+    "contentType": "application/geo+json",
+    "cacheControl": "public, max-age=86400, s-maxage=120",
+    "lastModified": null,
+    "bytes": 3901
+  },
+  {
+    "name": "nws-afd-rev-latest",
+    "url": "https://api.weather.gov/products/types/AFD/locations/REV/latest",
+    "fetchedAt": "2026-07-18T04:37:09.376Z",
+    "status": 200,
+    "contentType": "application/ld+json",
+    "cacheControl": "public, max-age=60, s-maxage=120",
+    "lastModified": null,
+    "bytes": 5246
+  },
+  {
+    "name": "nws-alerts-nv",
+    "url": "https://api.weather.gov/alerts/active?area=NV",
+    "fetchedAt": "2026-07-18T04:37:10.993Z",
+    "status": 200,
+    "contentType": "application/geo+json",
+    "cacheControl": "public, max-age=5, s-maxage=5",
+    "lastModified": null,
+    "bytes": 16227
+  },
+  {
+    "name": "spc-day1-categorical",
+    "url": "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.lyr.geojson",
+    "fetchedAt": "2026-07-18T04:37:13.095Z",
+    "status": 200,
+    "contentType": "application/geo+json",
+    "cacheControl": "private, max-age=0, must-revalidate,max-age=120",
+    "lastModified": "Sat, 18 Jul 2026 01:04:32 GMT",
+    "bytes": 7555
+  },
+  {
+    "name": "nws-gridpoint-forecast-reno",
+    "url": "https://api.weather.gov/gridpoints/REV/45,105/forecast",
+    "fetchedAt": "2026-07-18T04:37:14.750Z",
+    "status": 200,
+    "contentType": "application/geo+json",
+    "cacheControl": "public, max-age=3600, s-maxage=3600",
+    "lastModified": "Sat, 18 Jul 2026 00:59:58 GMT",
+    "bytes": 13258
+  }
+]

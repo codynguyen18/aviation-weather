@@ -1,0 +1,337 @@
+{
+    "@context": [
+        "https://geojson.org/geojson-ld/geojson-context.jsonld",
+        {
+            "@version": "1.1",
+            "wx": "https://api.weather.gov/ontology#",
+            "@vocab": "https://api.weather.gov/ontology#"
+        }
+    ],
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.f7f44af76978ede5f7cd49ab89d100ee4fd1397e.001.1",
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -114.05,
+                            37.63
+                        ],
+                        [
+                            -114.38,
+                            37.65
+                        ],
+                        [
+                            -114.42,
+                            37.97
+                        ],
+                        [
+                            -114.05,
+                            38.02
+                        ],
+                        [
+                            -114.05,
+                            37.63
+                        ]
+                    ]
+                ]
+            },
+            "properties": {
+                "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.f7f44af76978ede5f7cd49ab89d100ee4fd1397e.001.1",
+                "@type": "wx:Alert",
+                "id": "urn:oid:2.49.0.1.840.0.f7f44af76978ede5f7cd49ab89d100ee4fd1397e.001.1",
+                "areaDesc": "Lincoln, NV",
+                "geocode": {
+                    "SAME": [
+                        "032017"
+                    ],
+                    "UGC": [
+                        "NVC017"
+                    ]
+                },
+                "affectedZones": [
+                    "https://api.weather.gov/zones/county/NVC017"
+                ],
+                "references": [],
+                "sent": "2026-07-17T20:07:00-07:00",
+                "effective": "2026-07-17T20:07:00-07:00",
+                "onset": "2026-07-17T20:07:00-07:00",
+                "expires": "2026-07-17T23:00:00-07:00",
+                "ends": "2026-07-17T23:00:00-07:00",
+                "status": "Actual",
+                "messageType": "Alert",
+                "category": "Met",
+                "severity": "Minor",
+                "certainty": "Likely",
+                "urgency": "Expected",
+                "event": "Flood Advisory",
+                "sender": "w-nws.webmaster@noaa.gov",
+                "senderName": "NWS Las Vegas NV",
+                "headline": "Flood Advisory issued July 17 at 8:07PM PDT until July 17 at 11:00PM PDT by NWS Las Vegas NV",
+                "description": "* WHAT...Flooding caused by excessive rainfall is expected.\n\n* WHERE...East Central Lincoln County in south central Nevada...\n\n* WHEN...Until 1100 PM PDT.\n\n* IMPACTS...Minor flooding in low-lying and poor drainage areas.\nWater over roadways. Some low-water crossings may become\nimpassable.\n\n* ADDITIONAL DETAILS...\n- At 806 PM PDT, Doppler radar indicated heavy rain due to\nthunderstorms. Minor flooding is ongoing or expected to begin\nshortly in the advisory area. Up to 1 inch of rain has fallen.\n- Some locations that will experience flooding include...\nUrsine, Echo Canyon State Park, Panaca, and Highway 319\n- http://www.weather.gov/safety/flood",
+                "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe aware of your surroundings and do not drive on flooded roads.\n\nIn hilly terrain there are hundreds of low water crossings which are\npotentially dangerous in heavy rain. Do not attempt to cross flooded\nroads. Find an alternate route.",
+                "response": "Avoid",
+                "note": null,
+                "parameters": {
+                    "AWIPSidentifier": [
+                        "FLSVEF"
+                    ],
+                    "WMOidentifier": [
+                        "WGUS85 KVEF 180307"
+                    ],
+                    "NWSheadline": [
+                        "FLOOD ADVISORY IN EFFECT UNTIL 11 PM PDT THIS EVENING"
+                    ],
+                    "BLOCKCHANNEL": [
+                        "EAS",
+                        "NWEM",
+                        "CMAS"
+                    ],
+                    "VTEC": [
+                        "/O.NEW.KVEF.FA.Y.0029.260718T0307Z-260718T0600Z/"
+                    ],
+                    "eventEndingTime": [
+                        "2026-07-17T23:00:00-07:00"
+                    ]
+                },
+                "scope": "Public",
+                "code": "IPAWSv1.0",
+                "language": "en-US",
+                "web": "http://www.weather.gov",
+                "eventCode": {
+                    "SAME": [
+                        "NWS"
+                    ],
+                    "NationalWeatherService": [
+                        "FAY"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a38e8341868032d700b3884f27a3b0cf476b1733.001.1",
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -114.06,
+                            38.68
+                        ],
+                        [
+                            -114.12,
+                            38.68
+                        ],
+                        [
+                            -114.17,
+                            38.68
+                        ],
+                        [
+                            -114.38,
+                            38.73
+                        ],
+                        [
+                            -114.29,
+                            39.17
+                        ],
+                        [
+                            -114.22,
+                            39.21
+                        ],
+                        [
+                            -114.05,
+                            39.19
+                        ],
+                        [
+                            -114.06,
+                            38.68
+                        ]
+                    ]
+                ]
+            },
+            "properties": {
+                "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a38e8341868032d700b3884f27a3b0cf476b1733.001.1",
+                "@type": "wx:Alert",
+                "id": "urn:oid:2.49.0.1.840.0.a38e8341868032d700b3884f27a3b0cf476b1733.001.1",
+                "areaDesc": "White Pine, NV",
+                "geocode": {
+                    "SAME": [
+                        "032033"
+                    ],
+                    "UGC": [
+                        "NVC033"
+                    ]
+                },
+                "affectedZones": [
+                    "https://api.weather.gov/zones/county/NVC033"
+                ],
+                "references": [],
+                "sent": "2026-07-17T18:39:00-07:00",
+                "effective": "2026-07-17T18:39:00-07:00",
+                "onset": "2026-07-17T18:39:00-07:00",
+                "expires": "2026-07-17T21:45:00-07:00",
+                "ends": "2026-07-17T21:45:00-07:00",
+                "status": "Actual",
+                "messageType": "Alert",
+                "category": "Met",
+                "severity": "Minor",
+                "certainty": "Likely",
+                "urgency": "Expected",
+                "event": "Flood Advisory",
+                "sender": "w-nws.webmaster@noaa.gov",
+                "senderName": "NWS Elko NV",
+                "headline": "Flood Advisory issued July 17 at 6:39PM PDT until July 17 at 9:45PM PDT by NWS Elko NV",
+                "description": "* WHAT...Arroyo and small stream flooding caused by excessive\nrainfall is expected.\n\n* WHERE...A portion of northeast Nevada, including the following\ncounty, White Pine.\n\n* WHEN...Until 945 PM PDT.\n\n* IMPACTS...Minor flooding in low-lying and poor drainage areas.\nRises in small streams and normally dry arroyos. Water over\nroadways. Overflowing poor drainage areas. Some low-water\ncrossings may become impassable.\n\n* ADDITIONAL DETAILS...\n- At 639 PM PDT, Doppler radar indicated heavy rain due to\nthunderstorms. This will cause arroyo and small stream\nflooding. Between 0.5 and 1 inch of rain has fallen.\n- Additional rainfall amounts of 0.5 to 1 inch are expected\nover the area. This additional rain will result in minor\nflooding.\n- Some locations that will experience flooding include...\nGreat Basin National Park and Baker.\n- http://www.weather.gov/safety/flood",
+                "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe aware of your surroundings and do not drive on flooded roads.\n\nIn hilly terrain there are hundreds of low water crossings which are\npotentially dangerous in heavy rain. Do not attempt to cross flooded\nroads. Find an alternate route.\n\nRemain alert for flooding even in locations not receiving rain.\nArroyos, streams, and rivers can become raging killer currents in a\nmatter of minutes, even from distant rainfall.\n\nFlooding is occurring or is imminent. It is important to know where\nyou are relative to streams, rivers, or creeks which can become\nkillers in heavy rains. Campers and hikers should avoid streams or\ncreeks.",
+                "response": "Avoid",
+                "note": null,
+                "parameters": {
+                    "AWIPSidentifier": [
+                        "FLSLKN"
+                    ],
+                    "WMOidentifier": [
+                        "WGUS85 KLKN 180139"
+                    ],
+                    "NWSheadline": [
+                        "FLOOD ADVISORY IN EFFECT UNTIL 945 PM PDT THIS EVENING"
+                    ],
+                    "BLOCKCHANNEL": [
+                        "EAS",
+                        "NWEM",
+                        "CMAS"
+                    ],
+                    "VTEC": [
+                        "/O.NEW.KLKN.FA.Y.0019.260718T0139Z-260718T0445Z/"
+                    ],
+                    "eventEndingTime": [
+                        "2026-07-17T21:45:00-07:00"
+                    ]
+                },
+                "scope": "Public",
+                "code": "IPAWSv1.0",
+                "language": "en-US",
+                "web": "http://www.weather.gov",
+                "eventCode": {
+                    "SAME": [
+                        "NWS"
+                    ],
+                    "NationalWeatherService": [
+                        "FAY"
+                    ]
+                }
+            }
+        },
+        {
+            "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.34906be7ed93be3118b0078e4a8bb1b46431adea.001.1",
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -114.59,
+                            41.86
+                        ],
+                        [
+                            -114.7,
+                            41.69
+                        ],
+                        [
+                            -114.84,
+                            41.73
+                        ],
+                        [
+                            -114.8,
+                            41.82
+                        ],
+                        [
+                            -114.75,
+                            41.91
+                        ],
+                        [
+                            -114.59,
+                            41.86
+                        ]
+                    ]
+                ]
+            },
+            "properties": {
+                "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.34906be7ed93be3118b0078e4a8bb1b46431adea.001.1",
+                "@type": "wx:Alert",
+                "id": "urn:oid:2.49.0.1.840.0.34906be7ed93be3118b0078e4a8bb1b46431adea.001.1",
+                "areaDesc": "Elko, NV",
+                "geocode": {
+                    "SAME": [
+                        "032007"
+                    ],
+                    "UGC": [
+                        "NVC007"
+                    ]
+                },
+                "affectedZones": [
+                    "https://api.weather.gov/zones/county/NVC007"
+                ],
+                "references": [],
+                "sent": "2026-07-17T18:34:00-07:00",
+                "effective": "2026-07-17T18:34:00-07:00",
+                "onset": "2026-07-17T18:34:00-07:00",
+                "expires": "2026-07-17T21:45:00-07:00",
+                "ends": "2026-07-17T21:45:00-07:00",
+                "status": "Actual",
+                "messageType": "Alert",
+                "category": "Met",
+                "severity": "Minor",
+                "certainty": "Likely",
+                "urgency": "Expected",
+                "event": "Flood Advisory",
+                "sender": "w-nws.webmaster@noaa.gov",
+                "senderName": "NWS Elko NV",
+                "headline": "Flood Advisory issued July 17 at 6:34PM PDT until July 17 at 9:45PM PDT by NWS Elko NV",
+                "description": "* WHAT...Arroyo and small stream flooding caused by excessive\nrainfall is expected.\n\n* WHERE...A portion of northeast Nevada, including the following\ncounty, Elko.\n\n* WHEN...Until 945 PM PDT.\n\n* IMPACTS...Minor flooding in low-lying and poor drainage areas.\nRises in small streams and normally dry arroyos. Dangerous flows\nover low-water crossings. Water over roadways. Some low-water\ncrossings may become impassable.\n\n* ADDITIONAL DETAILS...\n- At 634 PM PDT, Doppler radar indicated heavy rain due to\nthunderstorms. This will cause arroyo and small stream\nflooding. Between 0.3 and 1 inch of rain has fallen.\n- Additional rainfall amounts of 0.2 to 0.7 inches are expected\nover the area. This additional rain will result in minor\nflooding.\n- Some locations that will experience flooding include...\nContact.\n- http://www.weather.gov/safety/flood",
+                "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe aware of your surroundings and do not drive on flooded roads.\n\nIn hilly terrain there are hundreds of low water crossings which are\npotentially dangerous in heavy rain. Do not attempt to cross flooded\nroads. Find an alternate route.\n\nPlease report observed flooding to local emergency services or law\nenforcement and request they pass this information to the National\nWeather Service when you can do so safely.",
+                "response": "Avoid",
+                "note": null,
+                "parameters": {
+                    "AWIPSidentifier": [
+                        "FLSLKN"
+                    ],
+                    "WMOidentifier": [
+                        "WGUS85 KLKN 180134"
+                    ],
+                    "NWSheadline": [
+                        "FLOOD ADVISORY IN EFFECT UNTIL 945 PM PDT THIS EVENING"
+                    ],
+                    "BLOCKCHANNEL": [
+                        "EAS",
+                        "NWEM",
+                        "CMAS"
+                    ],
+                    "VTEC": [
+                        "/O.NEW.KLKN.FA.Y.0018.260718T0134Z-260718T0445Z/"
+                    ],
+                    "eventEndingTime": [
+                        "2026-07-17T21:45:00-07:00"
+                    ]
+                },
+                "scope": "Public",
+                "code": "IPAWSv1.0",
+                "language": "en-US",
+                "web": "http://www.weather.gov",
+                "eventCode": {
+                    "SAME": [
+                        "NWS"
+                    ],
+                    "NationalWeatherService": [
+                        "FAY"
+                    ]
+                }
+            }
+        }
+    ],
+    "title": "Current watches, warnings, and advisories for Nevada",
+    "updated": "2026-07-18T04:36:59+00:00"
+}
