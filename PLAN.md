@@ -246,6 +246,7 @@ MVP source selection:
 
 Day 1/2/3 GeoJSON: `https://www.spc.noaa.gov/products/outlook/day{1,2,3}otlk_cat.lyr.geojson`, hazard probabilistics `day{1,2}otlk_{torn,wind,hail}`, significant-severe `cig{torn,wind,hail}`; Day 3 combined `day3otlk_prob`. No auth; CloudFront (Age header, `max-age=120` effective); shapefile/KMZ/ArcGIS REST also available (ArcGIS REST reflects Origin — browser-viable). Issuance: Day 1 at 0600/1300/1630/2000/0100Z; Day 2 ~0730Z(1 AM CST)/1730Z; Day 3 ~0830Z(2:30 AM CST)/1930Z. Properties: `DN` (categorical 2=TSTM…8=HIGH; probabilistic = integer %), `VALID/EXPIRE/ISSUE` + `_ISO` variants, `LABEL`, fill colors. Retention: latest overwritten; yearly archives (GeoJSON back to ~2019–2020, shapefiles further). Public domain.
 **Trap (live-verified): several plausible-looking URLs return HTTP 200 with silently frozen data** — `sig{torn,wind,hail}` stale since 2026-03-03, `day2otlk_prob` frozen at 2020-01-30. *Always validate `last-modified`/`ISSUE` against expected issuance schedule* — this is a concrete case for our `source-stale` rule and freshness monitors.
+Remaining matrix fields: auth none; rate limits none documented, none observed (standard NWS politeness applies; we fetch each outlook once per issuance server-side); latency sub-second via CloudFront edge (`Age` header observed); coverage CONUS (SPC's forecast domain); reliability high (static files on CloudFront) apart from the frozen-URL trap; CORS on the primary GeoJSON URLs not relied upon — we ingest server-side (the ArcGIS REST alternative reflects Origin and is browser-viable if ever needed).
 
 ### 7.4 Radar & satellite overlays — **[live]**
 
@@ -258,7 +259,7 @@ Day 1/2/3 GeoJSON: `https://www.spc.noaa.gov/products/outlook/day{1,2,3}otlk_cat
 | NESDIS STAR CDN GOES imagery | fixed-grid JPEG sectors (CC0 marker verified) | `*` | 5-min | not map-overlayable (projection mismatch); optional imagery panel |
 | MRMS GRIB2 (`mrms.ncep.noaa.gov`) | raw data | none | ~2-min | post-MVP only (self-rendered tiles) |
 
-All public domain; credit NOAA/NWS (and Iowa State if IEM used). Tiles load **directly in the browser** (CORS open) with our attribution + product-time chip; no proxying cost. Each layer's frame time comes from WMS capabilities/metadata, never wall clock.
+All public domain; credit NOAA/NWS (and Iowa State if IEM used). Auth: none on any of these services. Rate limits: none documented and none observed on any (NOAA publishes contacts — `nws.mapservices@noaa.gov` — for high-volume use); browser tile loads at MVP user counts are far below any plausible threshold, but layer code still throttles animation frame prefetch. Latency: tiles returned sub-second; product latency ≈ frame cadence + a few minutes (nowCOAST observed ~8 min behind newest MRMS frame). Reliability: opengeo is a single-origin GeoServer with no CDN (most current data, least burst capacity); nowCOAST and IEM sit behind CloudFront/Fastly (absorb load better); the layer registry defines fallback order opengeo → nowCOAST → IEM, and a layer whose newest frame exceeds 2× cadence shows a staleness chip. Tiles load **directly in the browser** (CORS open) with our attribution + product-time chip; no proxying cost. Each layer's frame time comes from WMS capabilities/metadata, never wall clock.
 
 ### 7.5 Lightning — **[live/docs]**
 
@@ -390,7 +391,7 @@ interface HazardArea {
   geometry: GeoJSON.Polygon | MultiPolygon;        // WGS-84, stored as PostGIS geography
   floorFtMsl: number | null; ceilingFtMsl: number | null; // FLxxx converted at 100 ft/FL (std atmosphere caveat noted in provenance)
   movement?: { dirDeg: number; speedKt: number };  // only if the product states it
-  characterization?: ConvectiveCharacter;          // see §Convection — from product text, never inferred
+  characterization?: ConvectiveCharacter;          // isolated|scattered|line|embedded|obscured|terrain-initiated|outflow|lightning|convective-cloud-cover|unknown-or-conflicting — from product text only, never inferred (§11.5)
   sourceRecordId: string;
 }
 ```
@@ -475,7 +476,7 @@ Hard-limit rules (from PilotMinimums/AircraftProfile):
 | `crosswind-limit` | computed crosswind component vs runway(s) > limit | red |
 | `winds-aloft-limit` | FB wind at cruise > pilot max (mountain-flying limit where segment crosses terrain flag) | red |
 | `night-restriction` | segment entry/exit after civil twilight & pilot disallows night | red |
-| `duty-time-limit` | cumulative time from reported duty start > max | red |
+| `duty-time-limit` | cumulative time from pilot-entered duty start (`flight_plans.duty_start_utc`) > max | red |
 | `fuel-reserve` | segment-end endurance − remaining legs < reserve requirement | red |
 
 Advisory rules (app heuristics; thresholds shown in UI):
@@ -490,15 +491,46 @@ Advisory rules (app heuristics; thresholds shown in UI):
 | `taf-convective-arrival` | TS/CB in TAF group covering arrival window | yellow; TEMPO TSRA at destination ETA → red-leaning yellow with decision gate |
 | `spc-outlook-context` | segment in SLGT+/ENH area during window | yellow context flag (never sole red) |
 | `terrain-ceiling-margin` | route MEF-style check: ceiling forecast − terrain elevation < pilot's ridge-clearance min in mountainous segments | red |
-| `source-stale` | any rule's required input stale per §9.7 | unknown (per matrix) |
+| `source-stale` | any rule's required input stale per §9.7 | unknown or degrade, per the parameter matrix below |
 | `source-conflict` | METAR vs TAF materially disagree in overlap window (e.g., obs 2 categories worse than forecast) | yellow + confidence drop, flagged "sources disagree" |
 | `arrival-after-twilight-advisory` | arrival within 30 min of civil twilight (night allowed) | yellow advisory |
+| `mountain-experience-advisory` | mountainous segment + pilot experience profile lacks mountain experience | yellow advisory (labeled, never red) |
+
+### Per-rule parameter matrix
+
+Concrete values for the `RuleDefinition` fields of §11.2 (thresholds are the pilot's where class = hard; app defaults shown otherwise; every row's fixture ids live under `tests/rules/<rule-id>/`):
+
+| Rule | Units | Spatial buffer | Time buffer | Altitude | Missing-data behavior | Confidence |
+|---|---|---|---|---|---|---|
+| `ceiling-below-minimum` | ft AGL | stations ≤ 25 nm of segment | ETA ± 30 min | surface | **unknown** (safety-critical) | high (METAR) / medium (TAF group) |
+| `visibility-below-minimum` | sm | stations ≤ 25 nm | ETA ± 30 min | surface | **unknown** | high / medium |
+| `surface-wind-limit` | kt | dep/dest/fuel-stop airports | ETA ± 60 min | surface | **unknown** at dep/dest; degrade for diversion candidates | high |
+| `crosswind-limit` | kt component | airport runways | ETA ± 60 min | surface | degrade + flag if runway data missing | high |
+| `winds-aloft-limit` | kt | nearest FB stations ≤ 150 nm | FB "for use" window overlap | cruise level (interpolated) | **unknown** if nearest station > 150 nm or issuance stale | medium |
+| `night-restriction` | civil-twilight times | n/a (computed) | segment entry/exit | n/a | computed locally — cannot be missing | high |
+| `duty-time-limit` | minutes | n/a | cumulative from `duty_start_utc` | n/a | if duty start unset, assume departure − 60 min and label the assumption | high |
+| `fuel-reserve` | min / gal | remaining legs | n/a | n/a | recompute zero-wind + degrade if winds unavailable | medium |
+| `convective-sigmet-intersect` | ft MSL, nm | corridor + 10 nm | ETA ± 30 min vs **raw-text validity** (conservative; see §7.1 truncation trap) | all altitudes | **unknown** if feed failed (safety-critical) | high |
+| `sigmet-intersect` | ft MSL, nm | corridor + 10 nm | ETA ± 30 min | band overlap | **unknown** if feed failed | high |
+| `cwa-intersect` | ft MSL | corridor | ETA ± 30 min | band overlap | degrade + flag (absence of CWAs is normal; a failed feed ≠ no CWAs) | high |
+| `gairmet-*` | hundreds-ft strings → ft MSL | corridor | snapshots bracketing segment ETA (both F-hours) | band overlap | **unknown** for `-ifr`/`-ice` (safety-critical); degrade for others | medium |
+| `pirep-mod-turb` | intensity enum | ≤ 50 nm of centerline | ≤ 90 min old | ± 4,000 ft | skip — no PIREPs shown as "no reports", never "no hazard" | medium |
+| `pirep-cluster` | count | corridor | 2 h | band | skip (same rationale) | medium |
+| `taf-convective-arrival` | TAF group wx | dest + fuel stops | arrival window | surface–tops | **unknown** if destination TAF missing/expired | medium |
+| `spc-outlook-context` | DN category | corridor ∩ outlook polygon | outlook valid period | n/a | degrade (context layer) | low |
+| `terrain-ceiling-margin` | ft | corridor max-elevation cells | ETA window | surface–cruise | **unknown** if ceiling forecast missing on mountainous segment | medium |
+| `mountain-experience-advisory` | experience enum | mountainous segments | n/a | n/a | skip if experience profile not provided (labeled "not evaluated") | low |
+| `source-stale` | freshness state | n/a | per §9.7 policy | n/a | is the missing-data machinery itself | high |
+| `source-conflict` | flight-category delta | station association | overlap window | surface | skip | medium |
+| `arrival-after-twilight-advisory` | minutes | destination | arrival | n/a | computed — cannot be missing | high |
+
+Example explanation templates (one per class): hard limit — `"Forecast ceiling {ceiling} ft at {station} ({tafGroup}, valid {window}) is below your IFR minimum of {min} ft [src:{id}]"`; advisory — `"Convective SIGMET {seriesId} (valid {rawValidity}) clips {clipNm} nm of segment {seg} during your ETA window {window} [src:{id}]"`; staleness — `"{sourceType} for {station} is {age} old (policy: {freshFor}); this segment cannot be rated better than Unknown [src:{id}]"`.
 
 Every rule ships with fixture-based test cases (see Testing §18), including its miss conditions (near-miss spatial, wrong altitude, expired-at-ETA).
 
 ## 11.5 Convection handling policy (product behavior, enforced in code)
 
-The rules engine and briefing generator never emit routing *through* convective weather. Specifically: no "gap" language, no cell-threading suggestions, no reliance on dissipation, no under-anvil paths, and mountain-corridor segments with convective flags always present the *turn-around/land* framing. Characterization (isolated / scattered / lines / embedded / obscured / terrain-initiated / outflow / lightning / unknown) is taken **only** from product text (Conv SIGMET phrasing, G-AIRMET, SPC outlook discussion, AFD wording) and each characterization stores its supporting source ids; if products conflict or are silent, characterization = `unknown-or-conflicting` and is displayed as such with the evidence list. Strategic alternatives the app *may* surface: wait N hours (with re-brief), large-scale alternate corridor (as a user-created alternate route to compare), land-short options, and explicit decision gates ("reassess at BAM VOR with fuel to return to Elko").
+The rules engine and briefing generator never emit routing *through* convective weather. Specifically: no "gap" language, no cell-threading suggestions, no reliance on dissipation, no under-anvil paths, no "continue and reassess inside a narrowing corridor" framing (a VMC corridor closing ahead in mountains is always presented as turn-around/land, never press-on), no treatment of delayed datalink/internet radar as tactical, and no product behavior that requires connectivity to stay safe. Characterization (isolated / scattered / lines / embedded / obscured / terrain-initiated / outflow / lightning / convective cloud cover (TCU/CB in METAR/TAF) / unknown) is taken **only** from product text (Conv SIGMET phrasing, G-AIRMET, SPC outlook discussion, AFD wording) and each characterization stores its supporting source ids; if products conflict or are silent, characterization = `unknown-or-conflicting` and is displayed as such with the evidence list. Strategic alternatives the app *may* surface: wait N hours (with re-brief), large-scale alternate corridor (as a user-created alternate route to compare), land-short options, and explicit decision gates ("reassess at BAM VOR with fuel to return to Elko").
 
 # 12. LLM Grounding & Validation Design
 
@@ -508,7 +540,7 @@ The LLM never fetches weather, never computes, never sees the open web. Input is
 
 ```
 BriefingContext = {
-  plan: {route, segments[], etas, aircraft, minimums (sanitized)},
+  plan: {route, segments[], etas, aircraft, minimums (sanitized), experienceProfile},
   assessments: SegmentAssessment[] (ratings + rule evaluations w/ measured values),
   sources: SourceIndex — id, type, station, issued, valid, freshness for every record used,
   hazards: HazardArea summaries w/ intersection geometry stats,
@@ -538,7 +570,7 @@ Pipeline for every model reply (briefing narrative and chat turns):
 1. **Citation parse** — extract `[src:*]`; unknown/absent ids → reject.
 2. **Claim extraction (deterministic)** — regex/number extraction of times, altitudes, distances, flight categories, wind values in the reply.
 3. **Value cross-check** — each extracted number/time must appear in (or be derivable within tolerance from) the cited records or the snapshot (ETAs, distances). Tolerances: times ±1 min, values exact or explicitly-rounded.
-4. **Prohibition lint** — deny-list + pattern checks: "safe to", "you'll be fine", "gap between cells", completion probabilities without a rule-engine basis, green-washing of Unknown segments, missing staleness disclosure when context flags staleness.
+4. **Prohibition lint** — deny-list + pattern checks: "safe to", "you'll be fine", "gap between cells", "thread/squeeze between", "corridor should stay open", "storms should dissipate by", completion probabilities without a rule-engine basis, green-washing of Unknown segments, missing staleness disclosure when context flags staleness.
 5. **Disposition** — on failure: one automatic regeneration with the validator's findings appended as correction instructions; on second failure the UI shows the deterministic assessment plus "narrative unavailable — showing computed results only". Validator verdicts are logged as metrics (§17).
 6. **(Optional, post-MVP)** LLM entailment spot-check on a sample of replies for claims the deterministic extractor can't type.
 
@@ -566,15 +598,21 @@ pilot_minimums    (id, user_id fk, label, mode ifr|vfr, min_ceiling_ft, min_visi
                    max_surface_wind_kt, max_crosswind_kt, max_winds_aloft_kt,
                    max_mountain_winds_aloft_kt, min_ridge_clearance_ft, turbulence_tolerance,
                    convective_policy jsonb, night_ok bool, night_requires jsonb,
-                   max_duty_min, overnight_ok bool, fuel_reserve_min, is_default)
+                   max_duty_min, overnight_ok bool, fuel_reserve_min,
+                   experience jsonb {total_hours, hours_in_type, recent_hours_90d,
+                     ifr_current bool, night_current bool,
+                     mountain_experience none|some|extensive}, is_default)
+-- experience feeds the LLM briefing context and the mountain-experience-advisory
+-- rule (§11.4); it never tightens or loosens the pilot's own hard limits
 ```
 
 ## 13.2 Planning (retained until user deletes)
 
 ```sql
 flight_plans     (id, user_id fk, title, mode ifr|vfr, aircraft_profile_id fk,
-                  pilot_minimums_id fk, departure_time_utc, corridor_width_nm,
-                  segment_max_nm, altitude_band_ft, cruise_altitude_ft, status)
+                  pilot_minimums_id fk, departure_time_utc, duty_start_utc nullable,
+                  corridor_width_nm, segment_max_nm, altitude_band_ft,
+                  cruise_altitude_ft, status)
 route_waypoints  (id, flight_plan_id fk, seq, ident, kind airport|fix|navaid|latlon,
                   nav_source, nav_cycle, geom geography(Point), elevation_ft,
                   is_fuel_stop bool, planned_ground_min)
@@ -676,17 +714,17 @@ Notes: briefing generation is the only long-running call — implemented as an i
 
 Screens (Next.js App Router):
 
-1. **New Flight Plan** (`/plans/new`) — route entry with typeahead waypoint resolver + disambiguation, departure time picker (shows local AND Zulu, airport-local explicitly labeled), aircraft/minimums selectors, cruise altitude/TAS, fuel stops, corridor settings (advanced, collapsed). Inline "this plans direct legs, not ATC routing" note.
+1. **New Flight Plan** (`/plans/new`) — route entry with typeahead waypoint resolver + disambiguation, departure time picker (shows local AND Zulu, airport-local explicitly labeled), optional duty-start time (feeds `duty-time-limit`; assumption labeled when omitted), aircraft/minimums selectors, cruise altitude/TAS, fuel stops, corridor settings (advanced, collapsed). Inline "this plans direct legs, not ATC routing" note.
 2. **Route Dashboard** (`/plans/:id`) — the core screen: `<RouteMap>` (MapLibre) + `<TimelineStrip>` (segments as colored blocks on a time axis with twilight shading and fuel stops) + `<TripSummaryBar>` (worst rating, hard stops, staleness banner, last-refresh, Refresh button) + `<BriefingPanel>` (chat, collapsible).
 3. **Segment Detail** (`/plans/:id/segments/:segId` as drawer) — ETA window, altitude, ratings with full rule evaluations (measured vs threshold), contributing products with issue/valid times, PIREP list w/ relevance basis, diversion airports, hard-stop conditions.
 4. **Weather Source Inspector** (`/sources/:recordId` as drawer) — normalized view + verbatim raw text side-by-side, issue/valid/fetched times, freshness state, upstream URL.
-5. **Personal Minimums** (`/minimums`) — form mirroring the hard-limit rules; every field shows which rules consume it.
-6. **Aircraft Profile** (`/aircraft`).
+5. **Personal Minimums** (`/minimums`) — form mirroring the hard-limit rules; every field shows which rules consume it. Includes the pilot experience profile (total hours, hours in type, recent 90-day hours, IFR/night currency, mountain experience) with an explicit note that experience informs advisory context only and never changes the pilot's hard limits.
+6. **Aircraft Profile** (`/aircraft`) — fields mirroring `aircraft_profiles` (cruise TAS, climb/descent rates and speeds, fuel endurance/burn/usable, max demonstrated crosswind, minimum runway length/surface, equipment notes), each annotated with what consumes it (ETA engine phases, `crosswind-limit`, `fuel-reserve`, diversion-airport filtering); supports multiple named profiles with a default.
 7. **Briefing History** (`/plans/:id/history`) — snapshot list with rating strips; open or diff any two.
 8. **What Changed** (`/plans/:id/diff`) — new/expired/amended products, rating transitions, ETA shifts; "explain this change" hands off to chat with the diff pinned.
 9. **Conversation Panel** — docked in dashboard; messages show citation chips → hovering highlights map geometry / opens inspector; validator-blocked replies render the fallback deterministic card.
 
-Map behavior: layers default ON: route+corridor, segment rating colors, active hazard polygons intersecting corridor, decision-gate markers. Default OFF (toggleable): all-CONUS hazards, radar mosaic, satellite, SPC outlook, PIREP cloud, alternate-route comparison. Every layer chip shows product time ("radar 6 min ago"); clicking anything opens its inspector. Alternate route renders as dashed second track with its own rating strip for side-by-side comparison.
+Map behavior: layers default ON: route+corridor, segment rating colors, active hazard polygons intersecting corridor, decision-gate markers, and diversion/escape airports (`candidate_airports` rendered along the corridor, filtered by aircraft profile; clicking one shows runway/fuel/lighting and its current METAR if available). Default OFF (toggleable): all-CONUS hazards, radar mosaic, satellite, SPC outlook, PIREP cloud, all-airports layer, alternate-route comparison. Every layer chip shows product time ("radar 6 min ago"); clicking anything opens its inspector. Alternate route renders as dashed second track with its own rating strip for side-by-side comparison.
 
 Component highlights: `RouteMap` (maplibre-gl, deck.gl not needed at MVP), `SegmentBlock`, `RatingBadge` (green/yellow/red/unknown — unknown is its own visual, never gray-as-green), `StalenessBanner`, `CitationChip`, `RawSourceView`, `DecisionGateCard`.
 
@@ -719,11 +757,11 @@ Layers (Vitest + Playwright + fixture corpus):
 2. **API contract tests** — recorded fixture responses per upstream endpoint (committed under `fixtures/upstream/`); parsers tested against fixtures; a scheduled *live* contract job re-fetches and schema-diffs to catch upstream drift (alert, not CI-fail).
 3. **Geospatial** — PostGIS-backed tests (Testcontainers): corridor buffer widths at 30°–48°N, polygon intersection truth cases, near-miss cases (hazard 26 nm off a 25 nm corridor → no hit; 24 nm → hit), dateline not needed (CONUS) but −124°→−67° extremes covered.
 4. **Time** — segment ETAs across CT→MT→PT; DST spring-forward departure; overnight leg twilight tagging; forecast-validity association at window edges (product expiring 1 min before entry ETA → not applicable; 1 min after → applicable).
-5. **Rules engine** — every rule's fixture cases from §11 (`testCases` ids are real files); the difficult set: SIGMET near-but-outside corridor; spatial-hit/time-miss; PIREP 8,000 ft above band; METAR-vs-TAF conflict; missing TAF at destination (→ unknown, not green); 3 h-old METAR (stale path); embedded-vs-isolated characterization from Conv SIGMET text; fuel-stop deviation shrinking daylight margin → night rule flips.
+5. **Rules engine** — every rule's fixture cases from §11 (`testCases` ids are real files); the difficult set: SIGMET near-but-outside corridor; spatial-hit/time-miss; PIREP 8,000 ft above band; METAR-vs-TAF conflict; missing TAF at destination (→ unknown, not green); 3 h-old METAR (stale path); embedded-vs-isolated characterization from Conv SIGMET text; terrain-initiated convection characterization (G-AIRMET/AFD-worded mountain convection vs an airmass Conv SIGMET); fuel-stop deviation shrinking daylight margin → night rule flips; route deviation eroding endurance until `fuel-reserve` flips red; **simulated source outage** (PIREP and G-AIRMET adapters forced to `failed`) → briefing status `partial`, affected rules go unknown per the §11.4 matrix, and the payload carries the outage flags the UI banner renders.
 6. **Snapshot/diff** — generated diff correctness on synthetic snapshot pairs; immutability (re-render of old snapshot byte-identical).
 7. **LLM grounding** — golden-transcript tests with a stubbed model: validator catches (a) uncited time claims, (b) fabricated source id, (c) numeric drift from cited METAR, (d) "safe to go" phrasing, (e) Unknown-segment green-washing, (f) injected instruction in a fake AFD ("ignore prior instructions…") → reply unaffected, flagged. Live-model smoke tests run nightly, not in CI.
 8. **E2E (Playwright)** — plan STL→OAK with fixture weather → dashboard renders correct ratings; toggle layers; inspector shows raw text; refresh with mutated fixtures → diff view shows the change; chat answers with citation chips (stubbed LLM).
-9. **Historical replay** — archived full-day fixture sets (a convective outbreak day, a benign day, a Sierra mountain-wave day) replayed through the whole pipeline as regression corpus; new rules must state expected effect on the corpus.
+9. **Historical replay** — archived full-day fixture sets (a convective outbreak day, a benign day, a Sierra mountain-wave day, a Front Range terrain-initiated-convection afternoon) replayed through the whole pipeline as regression corpus; new rules must state expected effect on the corpus. The E2E suite (item 8) additionally includes an outage scenario: briefing generated with one upstream fixture server down → partial banner, unknown segments, health chip degraded.
 
 # 19. Deployment Approach
 
@@ -749,11 +787,11 @@ Milestones sized to be individually reviewable PRs (1 = smallest useful unit). E
 
 **M6 — Dashboard UI** (L): map, timeline, segment drawer, inspector, layer toggles, staleness banners, manual refresh. AC: Playwright E2E on fixture briefing; unknown-rendering distinct; every datum click-through to raw source. Mocked: chat panel placeholder.
 
-**M7 — Snapshots history & diff** (M): history list, diff computation + What-Changed view. AC: mutated-fixture refresh produces correct diff; snapshot immutability test.
+**M7 — Snapshots history & diff** (M): history list, diff computation + What-Changed view. AC: mutated-fixture refresh produces correct diff; snapshot immutability test. Mocked: weather via mutated fixture pairs (no live dependency needed); LLM still absent.
 
 **M8 — Grounded chat** (L): briefing context builder, provider-agnostic LLM adapter (Anthropic default), read-only tools, citation contract, deterministic validator + regen path, SSE UI with citation chips. AC: golden grounding tests incl. injection fixture; validator metrics logged; fallback card on double-failure.
 
-**M9 — Auth, profiles, persistence, deploy** (M): Auth.js, saved aircraft/minimums/plans, rate limits, deletion flows, production deploy + observability dashboards. AC: two-user isolation test; delete cascades; prod smoke on live weather.
+**M9 — Auth, profiles, persistence, deploy** (M): Auth.js, saved aircraft/minimums/plans, rate limits, deletion flows, production deploy + observability dashboards. AC: two-user isolation test; delete cascades; prod smoke on live weather. Mocked: nothing — this milestone exists to remove the last mocks (live weather, real auth, real deploy).
 
 Rough complexity: S=days, M=~1 wk, L=1–2 wk solo-dev equivalent. Critical path M0→M2→M4→M5; UI (M6) can overlap M5; chat (M8) only needs M5's snapshot format (can start against fixtures).
 
