@@ -1,4 +1,10 @@
-import { greatCircleNm, intermediatePoint, type LatLon } from "@/lib/geo";
+import {
+  greatCircleNm,
+  initialBearingDeg,
+  intermediatePoint,
+  type LatLon,
+} from "@/lib/geo";
+import type { WindLookup } from "@/lib/wx/winds";
 import { daylightAt } from "@/lib/route/daylight";
 import { formatLocal, zoneFor } from "@/lib/route/timezone";
 import type {
@@ -184,6 +190,7 @@ function buildRawSegments(
 export function buildRoute(
   waypoints: RouteWaypoint[],
   opts: RouteOptions,
+  windAt?: WindLookup,
 ): RouteModel {
   if (waypoints.length < 2) {
     throw new Error("a route needs at least two waypoints");
@@ -239,7 +246,50 @@ export function buildRoute(
     const profile = profiles[s.hopIndex]!;
     const from = hopOffsetNm;
     const to = hopOffsetNm + s.distanceNm;
-    const minutes = minutesOver(profile, from, to, opts);
+    let minutes = minutesOver(profile, from, to, opts);
+
+    // Wind adjustment (PLAN.md §8.5): project the segment-midpoint wind onto
+    // the course and rescale time. Approximation across mixed phases is a
+    // single effective groundspeed shift; error is small at 50 nm segments.
+    const midPoint = intermediatePoint(s.start, s.end, 0.5);
+    const midAltForWind = altitudeAt(
+      profile,
+      (from + to) / 2,
+      hopEndpoints[s.hopIndex]!.startElev,
+      hopEndpoints[s.hopIndex]!.endElev,
+    );
+    let headwindKt: number | null = null;
+    let windDirDeg: number | null = null;
+    let windSpeedKt: number | null = null;
+    let windStation: string | null = null;
+    let windSourceRecordId: string | null = null;
+    let windSource: "fb" | "none" = "none";
+    if (windAt) {
+      const wind = windAt(
+        midPoint.lat,
+        midPoint.lon,
+        midAltForWind,
+        new Date(clockMs),
+      );
+      if (wind) {
+        windSource = "fb";
+        windDirDeg = wind.dirDeg;
+        windSpeedKt = Math.round(wind.speedKt);
+        windStation = wind.station;
+        windSourceRecordId = wind.sourceRecordId;
+        const course = initialBearingDeg(s.start, s.end);
+        const hw =
+          wind.dirDeg === null
+            ? 0 // light & variable
+            : wind.speedKt *
+              Math.cos(((wind.dirDeg - course) * Math.PI) / 180);
+        headwindKt = Math.round(hw * 10) / 10;
+        const gsZeroWind = (s.distanceNm / minutes) * 60;
+        const gsAdjusted = Math.max(40, gsZeroWind - hw);
+        minutes = (s.distanceNm / gsAdjusted) * 60;
+      }
+    }
+
     const entry = new Date(clockMs);
     const exit = new Date(clockMs + minutes * 60_000);
 
@@ -281,6 +331,12 @@ export function buildRoute(
       altitudeFt: Math.round(midAlt),
       phase,
       groundspeedKt: minutes > 0 ? (s.distanceNm / minutes) * 60 : 0,
+      headwindKt,
+      windDirDeg,
+      windSpeedKt,
+      windStation,
+      windSourceRecordId,
+      windSource,
       time,
     });
 
@@ -323,6 +379,6 @@ export function buildRoute(
       arrivalTz: last.time.exitTz,
       arrivalDaylight: last.time.exitDaylight,
     },
-    engine: { version: ENGINE_VERSION, wind: "zero-wind" },
+    engine: { version: ENGINE_VERSION, wind: windAt ? "fb-winds" : "zero-wind" },
   };
 }

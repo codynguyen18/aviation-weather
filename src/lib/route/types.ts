@@ -58,7 +58,15 @@ export interface RouteSegment {
   cumulativeDistanceNm: number; // at segment exit
   altitudeFt: number; // representative altitude (cruise, or mid-phase)
   phase: FlightPhase;
-  groundspeedKt: number; // zero-wind in M2; winds arrive in M4
+  groundspeedKt: number; // wind-adjusted when winds are available
+  /** Positive = headwind slowing the aircraft; negative = tailwind. */
+  headwindKt: number | null;
+  windDirDeg: number | null;
+  windSpeedKt: number | null;
+  windStation: string | null;
+  windSourceRecordId: string | null;
+  /** 'fb' = FB winds applied; 'none' = zero-wind fallback (flagged, never silent). */
+  windSource: "fb" | "none";
   time: SegmentTime;
 }
 
@@ -83,5 +91,5 @@ export interface RouteModel {
     arrivalTz: string;
     arrivalDaylight: Daylight;
   };
-  engine: { version: string; wind: "zero-wind" };
+  engine: { version: string; wind: "zero-wind" | "fb-winds" };
 }
