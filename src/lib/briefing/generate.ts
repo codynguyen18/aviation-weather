@@ -219,7 +219,7 @@ export async function generateBriefing(
   sql: Sql,
   coord: FetchCoordinator,
   request: BriefingRequest,
-  opts: { awcBaseUrl?: string; nwsBaseUrl?: string; now?: Date } = {},
+  opts: { awcBaseUrl?: string; nwsBaseUrl?: string; now?: Date; userId?: string | null } = {},
 ): Promise<BriefingResult> {
   const now = opts.now ?? new Date();
 
@@ -338,12 +338,12 @@ export async function generateBriefing(
   const [snap] = await sql`
     INSERT INTO briefing_snapshots
       (ruleset_version, engine_version, status, partial_reasons, request,
-       route, refresh_summary, trip_summary)
+       route, refresh_summary, trip_summary, user_id)
     VALUES
       (${RULESET_VERSION}, ${ENGINE_VERSION}, ${status},
        ${JSON.stringify(partialReasons)}::text::jsonb, ${JSON.stringify(request)}::text::jsonb,
        ${JSON.stringify(route)}::text::jsonb, ${JSON.stringify(refreshSummary ?? {})}::text::jsonb,
-       ${JSON.stringify(tripSummary)}::text::jsonb)
+       ${JSON.stringify(tripSummary)}::text::jsonb, ${opts.userId ?? null})
     RETURNING id, created_at
   `;
   const snapshotId = snap!.id as string;

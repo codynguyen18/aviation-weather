@@ -11,7 +11,11 @@ products, with a grounded conversational briefing on top.
 > in command retains final responsibility.
 
 The full technical/product plan lives in [PLAN.md](./PLAN.md). Current status:
-**M2 (route & time engine)** — see the milestone list in PLAN.md §20.
+**MVP complete (M0–M9)** — see the milestone list in PLAN.md §20.
+
+**Want it on the internet?** Follow the plain-English guide in
+[DEPLOY.md](./DEPLOY.md) — it walks through hosting, the database, sign-in
+emails, and the AI chat key step by step.
 
 ## Running it locally (plain-English version)
 

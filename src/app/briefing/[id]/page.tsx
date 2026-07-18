@@ -1,23 +1,26 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { sql } from "@/db";
 import Dashboard from "@/components/Dashboard";
 
 export const dynamic = "force-dynamic";
 
 // Route Dashboard (PLAN.md §15.2): server-fetches the immutable snapshot and
-// hands it to the interactive client dashboard.
+// hands it to the interactive client dashboard. User-scoped at the query.
 export default async function BriefingPage(props: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await props.params;
   if (!z.string().uuid().safeParse(id).success) notFound();
+  const session = await auth();
+  if (!session?.user?.id) redirect("/signin");
 
   const [snap] = await sql`
     SELECT id, created_at, ruleset_version, engine_version, status,
            partial_reasons, request, route, trip_summary
-    FROM briefing_snapshots WHERE id = ${id}
+    FROM briefing_snapshots WHERE id = ${id} AND user_id = ${session.user.id}
   `;
   if (!snap) notFound();
 

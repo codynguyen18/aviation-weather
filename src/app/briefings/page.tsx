@@ -1,19 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
 import { sql } from "@/db";
+import { listBriefings } from "@/lib/account/store";
 
 export const dynamic = "force-dynamic";
 
-// Saved briefing history (PLAN.md §15.7): snapshots newest-first with their
-// rating strips; diffs arrive via the compare links.
+// Saved briefing history (PLAN.md §15.7): the signed-in user's snapshots
+// newest-first with their rating strips; diffs arrive via the compare links.
 export default async function BriefingsPage() {
-  const rows = await sql`
-    SELECT b.id, b.created_at, b.status, b.trip_summary,
-           b.request->'waypoints' AS waypoints
-    FROM briefing_snapshots b
-    ORDER BY b.created_at DESC
-    LIMIT 30
-  `;
+  const session = await auth();
+  if (!session?.user?.id) redirect("/signin");
+  const rows = await listBriefings(sql, session.user.id);
 
   return (
     <main style={{ maxWidth: 860, margin: "1.5rem auto", padding: "0 16px", display: "grid", gap: 10 }}>

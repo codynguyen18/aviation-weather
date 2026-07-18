@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { sql } from "@/db";
 import { diffBriefings } from "@/lib/briefing/diff";
+import { userOwnsSnapshot } from "@/lib/account/store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,13 @@ export default async function DiffPage(props: {
   const { id, prevId } = await props.params;
   const uuid = z.string().uuid();
   if (!uuid.safeParse(id).success || !uuid.safeParse(prevId).success) notFound();
+  const session = await auth();
+  if (!session?.user?.id) redirect("/signin");
+  const [ownsNew, ownsOld] = await Promise.all([
+    userOwnsSnapshot(sql, session.user.id, id),
+    userOwnsSnapshot(sql, session.user.id, prevId),
+  ]);
+  if (!ownsNew || !ownsOld) notFound();
 
   const diff = await diffBriefings(sql, prevId, id);
   if (!diff) notFound();

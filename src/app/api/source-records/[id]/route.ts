@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { sql } from "@/db";
 import { freshnessOf } from "@/lib/wx/freshness";
 import { logger } from "@/lib/logger";
@@ -17,6 +18,12 @@ export async function GET(
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) {
     return NextResponse.json({ error: "invalid record id" }, { status: 400 });
+  }
+  // Weather products are public data, but the inspector is still gated to
+  // signed-in users like the rest of the app surface.
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "sign in required" }, { status: 401 });
   }
   try {
     const [rec] = await sql`

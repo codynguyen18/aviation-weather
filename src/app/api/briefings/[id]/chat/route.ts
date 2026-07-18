@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { sql } from "@/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { userOwnsSnapshot } from "@/lib/account/store";
+import { checkRateLimit } from "@/lib/account/rate-limit";
 import { AnthropicAdapter } from "@/lib/llm/adapter";
 import { runChat } from "@/lib/llm/chat";
 
@@ -26,9 +29,24 @@ export async function POST(
   if (!z.string().uuid().safeParse(id).success) {
     return NextResponse.json({ error: "invalid snapshot id" }, { status: 400 });
   }
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "sign in required" }, { status: 401 });
+  }
+  if (!(await userOwnsSnapshot(sql, userId, id))) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "message required (max 2000 chars)" }, { status: 400 });
+  }
+  const limit = await checkRateLimit(sql, `chat:${userId}`, 60, 60);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `chat limit reached (60 messages/hour) — try again in ~${limit.retryAfterMin} min` },
+      { status: 429 },
+    );
   }
   const apiKey = env().ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -88,6 +106,13 @@ export async function GET(
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) {
     return NextResponse.json({ error: "invalid snapshot id" }, { status: 400 });
+  }
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "sign in required" }, { status: 401 });
+  }
+  if (!(await userOwnsSnapshot(sql, session.user.id, id))) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   const qs = req.nextUrl.searchParams.get("conversationId");
   const conversationId = qs && z.string().uuid().safeParse(qs).success ? qs : null;

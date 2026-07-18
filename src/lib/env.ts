@@ -16,6 +16,12 @@ const envSchema = z.object({
   // "not configured" and everything else keeps working.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_MODEL: z.string().min(1).default("claude-opus-4-8"),
+  // Auth: cookie-signing secret (required in production — generate with
+  // `openssl rand -base64 32`). Email delivery for magic links is optional:
+  // without RESEND_API_KEY the link is printed to the server log instead.
+  AUTH_SECRET: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(3).default("onboarding@resend.dev"),
 });
 
 export type Env = z.infer<typeof envSchema>;
