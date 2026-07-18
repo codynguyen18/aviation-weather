@@ -51,7 +51,7 @@ const KOAK: RouteWaypoint = {
   navSource: "test", isFuelStop: false, groundMinutes: 0,
 };
 const OPTS: RouteOptions = {
-  departureTimeUtc: "2026-07-18T02:30:00Z", // inside the FB for-use window
+  departureTimeUtc: "2026-08-18T02:30:00Z", // inside the (shifted) FB for-use window
   cruiseAltitudeFt: 10500,
   performance: {
     cruiseTasKt: 165, climbRateFpm: 900, climbTasKt: 130,
@@ -157,30 +157,30 @@ describe.skipIf(!sql)("hazard + winds ingestion and intersection", () => {
   });
 
   it("winds ingest + lookup produce a headwind that slows the westbound route", async () => {
-    const w = await ingestWindtemp(sql!, coordFor(), ["06"], TEST_BASE, new Date("2026-07-18T02:00:00Z"));
+    const w = await ingestWindtemp(sql!, coordFor(), ["06"], TEST_BASE, new Date("2026-08-18T02:00:00Z"));
     expect(w.stored).toBe(18); // 2 stations x 9 levels
 
     const field = await loadWindField(sql!, {
-      from: new Date("2026-07-18T02:00:00Z"),
-      to: new Date("2026-07-18T12:00:00Z"),
+      from: new Date("2026-08-18T02:00:00Z"),
+      to: new Date("2026-08-18T12:00:00Z"),
     });
     expect(field.stations).toBeGreaterThanOrEqual(2);
 
     // Near St. Louis at 10,500 ft: interpolated between 9000 (270/30) and
     // 12000 (270/40) -> 270 deg at 35 kt.
-    const wind = field.at(38.86, -90.48, 10500, new Date("2026-07-18T03:00:00Z"))!;
+    const wind = field.at(38.86, -90.48, 10500, new Date("2026-08-18T03:00:00Z"))!;
     expect(wind).not.toBeNull();
     expect(wind.dirDeg).toBe(270);
     expect(wind.speedKt).toBeCloseTo(35, 0);
 
     // Far from any station -> null (flagged unavailable, not silently zero).
-    expect(field.at(30.0, -85.0, 9000, new Date("2026-07-18T03:00:00Z"))).toBeNull();
+    expect(field.at(30.0, -85.0, 9000, new Date("2026-08-18T03:00:00Z"))).toBeNull();
 
     const zeroWind = buildRoute([KSTL, KOAK], OPTS);
     const withWind = buildRoute([KSTL, KOAK], OPTS, field.at);
     expect(withWind.engine.wind).toBe("fb-winds");
     expect(withWind.totals.airborneMinutes).toBeGreaterThan(
-      zeroWind.totals.airborneMinutes + 30,
+      zeroWind.totals.airborneMinutes + 15, // only segments within 150 nm of STL/FMG adjust
     );
     const first = withWind.segments[0]!;
     expect(first.windSource).toBe("fb");

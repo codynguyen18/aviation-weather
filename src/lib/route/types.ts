@@ -42,6 +42,10 @@ export interface SegmentTime {
   exitTz: string;
   entryDaylight: Daylight;
   exitDaylight: Daylight;
+  /** Airborne minutes since the last fuel stop, measured at segment exit. */
+  fuelUsedMinAtExit: number;
+  /** Airborne minutes from segment exit to the next fuel stop or destination. */
+  fuelAheadMin: number;
 }
 
 export interface RouteSegment {

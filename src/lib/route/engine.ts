@@ -224,6 +224,8 @@ export function buildRoute(
 
   const segments: RouteSegment[] = [];
   const groundStops: GroundStop[] = [];
+  const segHopIndex: number[] = [];
+  const segMinutes: number[] = [];
   let clockMs = new Date(opts.departureTimeUtc).getTime();
   let cumulativeNm = 0;
   let hopOffsetNm = 0;
@@ -314,7 +316,11 @@ export function buildRoute(
       exitTz,
       entryDaylight: daylightAt(entry, s.start.lat, s.start.lon),
       exitDaylight: daylightAt(exit, s.end.lat, s.end.lon),
+      fuelUsedMinAtExit: 0, // filled by the per-hop fuel pass below
+      fuelAheadMin: 0,
     };
+    segHopIndex.push(s.hopIndex);
+    segMinutes.push(minutes);
 
     cumulativeNm += s.distanceNm;
     segments.push({
@@ -358,6 +364,26 @@ export function buildRoute(
       groundMinutes += stop.groundMinutes;
       clockMs = departMs;
     }
+  }
+
+  // Fuel bookkeeping per hop: minutes since the last stop at each segment's
+  // exit, and minutes remaining to the next stop (feeds the fuel-reserve rule).
+  const hopTotalMin = new Map<number, number>();
+  for (let i = 0; i < segments.length; i++) {
+    const h = segHopIndex[i]!;
+    hopTotalMin.set(h, (hopTotalMin.get(h) ?? 0) + segMinutes[i]!);
+  }
+  let runningHop = -1;
+  let usedInHop = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const h = segHopIndex[i]!;
+    if (h !== runningHop) {
+      runningHop = h;
+      usedInHop = 0;
+    }
+    usedInHop += segMinutes[i]!;
+    segments[i]!.time.fuelUsedMinAtExit = usedInHop;
+    segments[i]!.time.fuelAheadMin = (hopTotalMin.get(h) ?? usedInHop) - usedInHop;
   }
 
   const last = segments[segments.length - 1]!;

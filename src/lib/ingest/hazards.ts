@@ -34,7 +34,7 @@ async function storeHazard(
        upstream_url, raw)
     VALUES
       (${sourceType}, null, ${n.externalKey}, ${n.validFrom}, ${n.validFrom},
-       ${n.validTo}, ${url}, ${JSON.stringify(rawFeature)})
+       ${n.validTo}, ${url}, ${JSON.stringify(rawFeature)}::text::jsonb)
     ON CONFLICT (source_type, external_key) DO UPDATE SET fetched_at = now()
     RETURNING id, (xmax = 0) AS inserted
   `;
@@ -46,7 +46,7 @@ async function storeHazard(
        forecast_hour, valid_from, valid_to, raw_text)
     VALUES
       (${rec!.id}, ${n.product}, ${n.hazard}, ${n.severity}, ${n.qualifier},
-       ST_GeomFromGeoJSON(${JSON.stringify(n.geometry)})::geography,
+       ST_GeomFromGeoJSON(${JSON.stringify(n.geometry)}::text::jsonb)::geography,
        ${n.floorFtMsl}, ${n.ceilingFtMsl}, ${n.movementDirDeg},
        ${n.movementSpdKt}, ${n.forecastHour}, ${n.validFrom}, ${n.validTo},
        ${n.rawText})
@@ -128,7 +128,7 @@ export async function ingestWindtemp(
         ('WINDTEMP', ${"us-low-" + fcst},
          ${`WINDTEMP:us:low:${fcst}:${bulletin.basedOn}`},
          ${bulletin.basedOn}, ${bulletin.forUseFrom}, ${bulletin.forUseTo},
-         ${url}, ${JSON.stringify({ text: out.body })})
+         ${url}, ${JSON.stringify({ text: out.body })}::text::jsonb)
       ON CONFLICT (source_type, external_key) DO UPDATE SET fetched_at = now()
       RETURNING id, (xmax = 0) AS inserted
     `;
@@ -204,7 +204,7 @@ export async function ingestAfds(
           (source_type, station, external_key, issued_at, upstream_url, raw)
         VALUES
           ('AFD', ${wfo}, ${`AFD:${wfo}:${issuanceTime}`}, ${issuanceTime},
-           ${url}, ${JSON.stringify({ issuingOffice: p.issuingOffice, issuanceTime, text: productText })})
+           ${url}, ${JSON.stringify({ issuingOffice: p.issuingOffice, issuanceTime, text: productText })}::text::jsonb)
         ON CONFLICT (source_type, external_key) DO UPDATE SET fetched_at = now()
         RETURNING (xmax = 0) AS inserted
       `;

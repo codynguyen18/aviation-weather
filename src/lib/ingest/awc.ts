@@ -59,7 +59,7 @@ async function upsertSourceRecord(
     VALUES
       (${row.sourceType}, ${row.station}, ${row.externalKey}, ${row.issuedAt},
        ${row.validFrom ?? null}, ${row.validTo ?? null}, ${row.upstreamUrl},
-       ${JSON.stringify(row.raw)}, ${row.parseStatus ?? "ok"})
+       ${JSON.stringify(row.raw)}::text::jsonb, ${row.parseStatus ?? "ok"})
     ON CONFLICT (source_type, external_key)
       DO UPDATE SET fetched_at = now()
     RETURNING id, (xmax = 0) AS inserted
@@ -104,7 +104,7 @@ export async function ingestMetars(
         result.parseFailures += 1;
         await upsertSourceRecord(sql, {
           sourceType: "METAR", station: String(item.icaoId ?? "?"),
-          externalKey: `METAR:unparsed:${JSON.stringify(item).slice(0, 120)}`,
+          externalKey: `METAR:unparsed:${JSON.stringify(item).slice(0, 120)}::text::jsonb`,
           issuedAt: null, upstreamUrl: url, raw: item, parseStatus: "failed",
         });
         continue;
@@ -127,7 +127,7 @@ export async function ingestMetars(
              ${n.flightCategory}, ${n.tempC}, ${n.dewpointC}, ${n.windDirDeg},
              ${n.windSpeedKt}, ${n.windGustKt}, ${n.visibilitySm},
              ${n.ceilingFtAgl}, ${n.altimInHg}, ${n.wxString},
-             ${JSON.stringify(n.clouds)}, ${JSON.stringify(n.missingFields)},
+             ${JSON.stringify(n.clouds)}::text::jsonb, ${JSON.stringify(n.missingFields)}::text::jsonb,
              ${n.rawText})
           ON CONFLICT (station, observed_at) DO NOTHING
         `;
@@ -191,7 +191,7 @@ export async function ingestTafs(
                ${g.groupType}, ${g.probability}, ${g.validFrom}, ${g.validTo},
                ${g.windDirDeg}, ${g.windSpeedKt}, ${g.windGustKt},
                ${g.visibilitySm}, ${g.ceilingFtAgl}, ${g.wxString},
-               ${JSON.stringify(g.clouds)}, ${g.rawText})
+               ${JSON.stringify(g.clouds)}::text::jsonb, ${g.rawText})
           `;
         }
         result.stored += 1;
@@ -244,8 +244,8 @@ export async function ingestPireps(
             (${rec.id}, ${n.observedAt},
              ${`SRID=4326;POINT(${n.lon} ${n.lat})`}, ${n.altitudeFtMsl},
              ${n.altitudeNote}, ${n.aircraftType}, ${n.reportType},
-             ${n.urgent}, ${JSON.stringify(n.turbulence)},
-             ${JSON.stringify(n.icing)}, ${JSON.stringify(n.clouds)},
+             ${n.urgent}, ${JSON.stringify(n.turbulence)}::text::jsonb,
+             ${JSON.stringify(n.icing)}::text::jsonb, ${JSON.stringify(n.clouds)}::text::jsonb,
              ${n.wxString}, ${n.tempC}, ${n.rawText})
         `;
         result.stored += 1;
