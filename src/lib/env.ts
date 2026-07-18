@@ -12,6 +12,10 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  // Optional: enables the live AI chat. Without it the chat endpoint reports
+  // "not configured" and everything else keeps working.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-opus-4-8"),
 });
 
 export type Env = z.infer<typeof envSchema>;

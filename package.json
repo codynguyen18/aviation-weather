@@ -17,6 +17,7 @@
     "fixtures:capture": "node scripts/capture-fixtures.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "@photostructure/tz-lookup": "^11.6.0",
     "csv-parse": "^7.0.1",
     "drizzle-orm": "^0.45.2",

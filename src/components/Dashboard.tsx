@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import ChatPanel from "@/components/ChatPanel";
 import RouteMap from "@/components/RouteMap";
 import Timeline from "@/components/Timeline";
 import SegmentDetail from "@/components/SegmentDetail";
@@ -145,6 +146,8 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           />
         )}
       </div>
+
+      <ChatPanel snapshotId={snapshot.id} onInspect={setInspectId} />
 
       <div className="advisory-banner">
         Advisory only — not an official weather briefing. Ratings reflect the
