@@ -26,12 +26,26 @@ describe.skipIf(!sql)("navdata import + resolver", () => {
       runwaysCsv: fixture("runways.csv"),
       navaidsCsv: fixture("navaids.csv"),
       versionLabel: "test-fixture",
+      prune: false,
     };
     await importOurAirports(sql!, input);
   });
 
   afterAll(async () => {
+    // Remove test datasets AND hand the active flag back to the newest real
+    // dataset if one exists — otherwise a test run would leave a previously
+    // imported production snapshot silently deactivated.
     await sql!`DELETE FROM nav_datasets WHERE version_label LIKE 'test-%'`;
+    await sql!`
+      UPDATE nav_datasets SET active = true
+      WHERE id = (
+        SELECT id FROM nav_datasets WHERE source = 'ourairports'
+        ORDER BY imported_at DESC LIMIT 1
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM nav_datasets WHERE source = 'ourairports' AND active
+      )
+    `;
     await sql!.end();
   });
 
@@ -121,6 +135,7 @@ describe.skipIf(!sql)("navdata import + resolver", () => {
       runwaysCsv: fixture("runways.csv"),
       navaidsCsv: fixture("navaids.csv"),
       versionLabel: "test-fixture-2",
+      prune: false,
     };
     await importOurAirports(sql!, input);
     const active = await sql!`

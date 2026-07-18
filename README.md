@@ -11,7 +11,7 @@ products, with a grounded conversational briefing on top.
 > in command retains final responsibility.
 
 The full technical/product plan lives in [PLAN.md](./PLAN.md). Current status:
-**M1 (airport & navdata resolution)** — see the milestone list in PLAN.md §20.
+**M2 (route & time engine)** — see the milestone list in PLAN.md §20.
 
 ## Running it locally (plain-English version)
 

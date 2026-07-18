@@ -11,6 +11,12 @@ export interface ImportInput {
   runwaysCsv: string;
   navaidsCsv: string;
   versionLabel: string;
+  /**
+   * Prune datasets older than the one inactive predecessor (default true for
+   * production refreshes). Tests MUST pass false: their throwaway imports
+   * would otherwise count as "newer cycles" and delete the real dataset.
+   */
+  prune?: boolean;
 }
 
 export interface ImportResult {
@@ -109,15 +115,17 @@ export async function importOurAirports(
     await tx`UPDATE nav_datasets SET active = false
              WHERE source = 'ourairports' AND active`;
     await tx`UPDATE nav_datasets SET active = true WHERE id = ${datasetId}`;
-    // Keep exactly one inactive predecessor for rollback; drop older ones.
-    await tx`
-      DELETE FROM nav_datasets
-      WHERE source = 'ourairports' AND NOT active AND id NOT IN (
-        SELECT id FROM nav_datasets
-        WHERE source = 'ourairports' AND NOT active
-        ORDER BY imported_at DESC LIMIT 1
-      )
-    `;
+    if (input.prune !== false) {
+      // Keep exactly one inactive predecessor for rollback; drop older ones.
+      await tx`
+        DELETE FROM nav_datasets
+        WHERE source = 'ourairports' AND NOT active AND id NOT IN (
+          SELECT id FROM nav_datasets
+          WHERE source = 'ourairports' AND NOT active
+          ORDER BY imported_at DESC LIMIT 1
+        )
+      `;
+    }
   });
 
   return {
