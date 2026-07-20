@@ -2,6 +2,7 @@ import type { Sql } from "postgres";
 
 import { AWC_BASE } from "@/lib/ingest/awc";
 import type { FetchCoordinator, FetchState } from "@/lib/ingest/coordinator";
+import { chunk, mapWithConcurrency } from "@/lib/util/concurrency";
 import {
   normalizeAirsigmet,
   normalizeCwa,
@@ -85,12 +86,13 @@ export async function ingestHazardProduct(
     product === "airsigmet" ? normalizeAirsigmet
     : product === "gairmet" ? normalizeGairmet
     : normalizeCwa;
-  for (const f of features(out.body)) {
-    result.fetched += 1;
+  const feats = features(out.body);
+  result.fetched += feats.length;
+  await mapWithConcurrency(feats, 8, async (f) => {
     const n = normalize(f as never);
-    if (!n) continue;
+    if (!n) return;
     if (await storeHazard(sql, n, sourceType, url, f)) result.stored += 1;
-  }
+  });
   return result;
 }
 
@@ -133,17 +135,27 @@ export async function ingestWindtemp(
       RETURNING id, (xmax = 0) AS inserted
     `;
     if (rec!.inserted) {
-      for (const e of bulletin.entries) {
+      // winds_aloft has no jsonb columns, so a chunked multi-row insert is
+      // safe here and turns ~1500 round trips per cycle into a handful — the
+      // single biggest win for long routes against a remote database.
+      const rows = bulletin.entries.map((e) => ({
+        source_record_id: rec!.id as string,
+        region: "us",
+        level_class: "low",
+        fcst,
+        based_on: bulletin.basedOn,
+        for_use_from: bulletin.forUseFrom,
+        for_use_to: bulletin.forUseTo,
+        station: e.station,
+        level_ft: e.levelFt,
+        wind_dir_deg: e.windDirDeg,
+        wind_speed_kt: e.windSpeedKt,
+        temp_c: e.tempC,
+        light_variable: e.lightVariable,
+      }));
+      for (const part of chunk(rows, 500)) {
         await sql`
-          INSERT INTO winds_aloft
-            (source_record_id, region, level_class, fcst, based_on,
-             for_use_from, for_use_to, station, level_ft, wind_dir_deg,
-             wind_speed_kt, temp_c, light_variable)
-          VALUES
-            (${rec!.id}, 'us', 'low', ${fcst}, ${bulletin.basedOn},
-             ${bulletin.forUseFrom}, ${bulletin.forUseTo}, ${e.station},
-             ${e.levelFt}, ${e.windDirDeg}, ${e.windSpeedKt}, ${e.tempC},
-             ${e.lightVariable})
+          INSERT INTO winds_aloft ${sql(part)}
           ON CONFLICT (source_record_id, station, level_ft) DO NOTHING
         `;
       }

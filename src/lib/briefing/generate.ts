@@ -27,32 +27,11 @@ import { freshnessOf } from "@/lib/wx/freshness";
 import { refreshRouteWeather, type RouteWeatherSummary } from "@/lib/wx/service";
 import { loadWindField } from "@/lib/wx/winds";
 import { METERS_PER_NM } from "@/lib/geo";
+import { mapWithConcurrency } from "@/lib/util/concurrency";
 
 // Briefing generation (PLAN.md §5.4): deterministic pipeline from a request
 // to an immutable snapshot with full provenance. The LLM (M8) only ever sees
 // what this pipeline computed.
-
-// Run an async map with a bounded number of in-flight tasks — enough
-// concurrency to keep the connection pool busy on long routes, without firing
-// dozens of PostGIS queries at the database all at once.
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]!, i);
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
-  );
-  return results;
-}
 
 // Defensive jsonb read: tolerate legacy double-encoded rows (string scalars).
 function parseJsonbArray<T>(v: unknown): T[] {

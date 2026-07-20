@@ -1,6 +1,7 @@
 import type { Sql } from "postgres";
 
 import type { FetchCoordinator, FetchState } from "@/lib/ingest/coordinator";
+import { mapWithConcurrency } from "@/lib/util/concurrency";
 import {
   normalizeMetar,
   normalizePirep,
@@ -10,8 +11,16 @@ import {
 // AWC Data API adapters (PLAN.md §7.1). Every fetched product is stored as a
 // source_record (provenance) plus normalized rows keyed to it. Idempotent:
 // re-fetching the same product is a no-op beyond bumping fetched_at.
+//
+// Records within a single response are independent, so they are written with
+// bounded concurrency: a nationwide route returns hundreds of METARs, and one
+// serial round trip each is far too slow against a remote database.
 
 export const AWC_BASE = "https://aviationweather.gov/api/data";
+
+// Concurrent in-flight writes per response. The DB pool bounds the true
+// parallelism; this just avoids queueing thousands of promises at once.
+const WRITE_CONCURRENCY = 8;
 
 export interface IngestResult {
   sourceType: "METAR" | "TAF" | "PIREP";
@@ -97,8 +106,9 @@ export async function ingestMetars(
       continue;
     }
     result.fetchedAt = out.fetchedAt ?? result.fetchedAt;
-    for (const item of parseJsonArray(out.body)) {
-      result.fetched += 1;
+    const items = parseJsonArray(out.body);
+    result.fetched += items.length;
+    await mapWithConcurrency(items, WRITE_CONCURRENCY, async (item) => {
       const n = normalizeMetar(item);
       if (!n) {
         result.parseFailures += 1;
@@ -107,7 +117,7 @@ export async function ingestMetars(
           externalKey: `METAR:unparsed:${JSON.stringify(item).slice(0, 120)}::text::jsonb`,
           issuedAt: null, upstreamUrl: url, raw: item, parseStatus: "failed",
         });
-        continue;
+        return;
       }
       const rec = await upsertSourceRecord(sql, {
         sourceType: "METAR", station: n.station,
@@ -133,7 +143,7 @@ export async function ingestMetars(
         `;
         result.stored += 1;
       }
-    }
+    });
   }
   return result;
 }
@@ -163,12 +173,13 @@ export async function ingestTafs(
       continue;
     }
     result.fetchedAt = out.fetchedAt ?? result.fetchedAt;
-    for (const item of parseJsonArray(out.body)) {
-      result.fetched += 1;
+    const items = parseJsonArray(out.body);
+    result.fetched += items.length;
+    await mapWithConcurrency(items, WRITE_CONCURRENCY, async (item) => {
       const groups = normalizeTaf(item);
       if (groups.length === 0) {
         result.parseFailures += 1;
-        continue;
+        return;
       }
       const g0 = groups[0]!;
       const validTo = groups[groups.length - 1]!.validTo;
@@ -196,7 +207,7 @@ export async function ingestTafs(
         }
         result.stored += 1;
       }
-    }
+    });
   }
   return result;
 }
@@ -221,12 +232,13 @@ export async function ingestPireps(
       continue;
     }
     result.fetchedAt = out.fetchedAt ?? result.fetchedAt;
-    for (const item of parseJsonArray(out.body)) {
-      result.fetched += 1;
+    const items = parseJsonArray(out.body);
+    result.fetched += items.length;
+    await mapWithConcurrency(items, WRITE_CONCURRENCY, async (item) => {
       const n = normalizePirep(item);
       if (!n) {
         result.parseFailures += 1;
-        continue;
+        return;
       }
       // PIREPs have no upstream id; identity = time + place + raw text head.
       const key = `PIREP:${n.observedAt}:${n.lat.toFixed(3)},${n.lon.toFixed(3)}:${n.rawText.slice(0, 60)}`;
@@ -250,7 +262,7 @@ export async function ingestPireps(
         `;
         result.stored += 1;
       }
-    }
+    });
   }
   return result;
 }
