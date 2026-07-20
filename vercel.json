@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/migrate.mjs && next build"
+  "buildCommand": "node scripts/migrate.mjs && SKIP_IF_PRESENT=1 npx tsx scripts/import-navdata.mts && next build"
 }

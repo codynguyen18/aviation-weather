@@ -4,6 +4,10 @@
 // Usage:
 //   npm run navdata:import                # download live files and import
 //   npm run navdata:import -- --dir path  # import from local CSV files
+//
+// Set SKIP_IF_PRESENT=1 to no-op when an active dataset already has airports
+// (used in the Vercel build so the one-time load happens on the first deploy
+// and is skipped on every deploy after).
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
@@ -47,23 +51,38 @@ async function loadSources(): Promise<{ files: string[]; label: string }> {
   return { files, label };
 }
 
-const { files, label } = await loadSources();
-const [airportsCsv, runwaysCsv, navaidsCsv] = files as [string, string, string];
-
 // prepare:false so this works through a transaction-mode pooler (Neon) too.
 const sql = postgres(databaseUrl, { max: 1, prepare: false, onnotice: () => {} });
 try {
-  const result = await importOurAirports(sql, {
-    airportsCsv,
-    runwaysCsv,
-    navaidsCsv,
-    versionLabel: label,
-  });
-  console.log(
-    `imported ourairports@${label}: ${result.airports} airports, ` +
-      `${result.runways} runways, ${result.navaids} navaids ` +
-      `(dataset ${result.datasetId})`,
-  );
+  let alreadyPresent = false;
+  if (process.env.SKIP_IF_PRESENT === "1") {
+    const rows = await sql`
+      SELECT count(*)::int AS n
+      FROM nav_airports a
+      JOIN nav_datasets d ON d.id = a.dataset_id AND d.active
+    `.catch(() => [{ n: 0 }]);
+    const present = Number(rows[0]?.n ?? 0);
+    if (present > 0) {
+      console.log(`navdata already present (${present} active airports) — skipping import`);
+      alreadyPresent = true;
+    }
+  }
+
+  if (!alreadyPresent) {
+    const { files, label } = await loadSources();
+    const [airportsCsv, runwaysCsv, navaidsCsv] = files as [string, string, string];
+    const result = await importOurAirports(sql, {
+      airportsCsv,
+      runwaysCsv,
+      navaidsCsv,
+      versionLabel: label,
+    });
+    console.log(
+      `imported ourairports@${label}: ${result.airports} airports, ` +
+        `${result.runways} runways, ${result.navaids} navaids ` +
+        `(dataset ${result.datasetId})`,
+    );
+  }
 } finally {
   await sql.end();
 }
