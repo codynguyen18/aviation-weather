@@ -78,3 +78,77 @@ export async function hazardsForSegment(
     rawText: (r.raw_text as string | null) ?? null,
   }));
 }
+
+export interface NearbyHazard {
+  hazardId: string;
+  sourceRecordId: string;
+  product: string;
+  hazard: string;
+  severity: string | null;
+  floorFtMsl: number | null;
+  ceilingFtMsl: number | null;
+  validFrom: string;
+  validTo: string;
+  rawText: string | null;
+  station: string | null;
+  geometry: object | null; // full hazard shape (GeoJSON), not clipped
+}
+
+/**
+ * Every hazard whose full shape falls within the route's bounding box (plus a
+ * margin) and whose validity is anywhere near the flight window. This is what
+ * the map draws: it shows hazards *near* the route — including ones that don't
+ * clip the corridor or that expired shortly before departure — so the pilot
+ * can see and click the surrounding weather, not just what changed the rating.
+ */
+export async function hazardsNearRoute(
+  sql: Sql,
+  route: {
+    segments: { points: [number, number][] }[];
+    totals: { departureUtc: string; arrivalUtc: string };
+  },
+  opts: { marginDeg?: number; windowPadMin?: number } = {},
+): Promise<NearbyHazard[]> {
+  const margin = opts.marginDeg ?? 1.0;
+  const pad = opts.windowPadMin ?? 180;
+  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  for (const s of route.segments) {
+    for (const [lon, lat] of s.points) {
+      minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+      minLon = Math.min(minLon, lon); maxLon = Math.max(maxLon, lon);
+    }
+  }
+  if (!Number.isFinite(minLat)) return [];
+  const windowFrom = new Date(Date.parse(route.totals.departureUtc) - pad * 60_000).toISOString();
+  const windowTo = new Date(Date.parse(route.totals.arrivalUtc) + pad * 60_000).toISOString();
+
+  const rows = await sql`
+    SELECT h.id, h.source_record_id, h.product, h.hazard, h.severity,
+           h.floor_ft_msl, h.ceiling_ft_msl, h.valid_from, h.valid_to,
+           h.raw_text, s.station,
+           ST_AsGeoJSON(h.geom)::json AS geom
+    FROM hazard_geometries h
+    JOIN source_records s ON s.id = h.source_record_id
+    WHERE h.valid_to >= ${windowFrom} AND h.valid_from <= ${windowTo}
+      AND ST_Intersects(
+        h.geom,
+        ST_MakeEnvelope(${minLon - margin}, ${minLat - margin},
+                        ${maxLon + margin}, ${maxLat + margin}, 4326)::geography
+      )
+    ORDER BY h.product, h.valid_to
+  `;
+  return rows.map((r) => ({
+    hazardId: r.id as string,
+    sourceRecordId: r.source_record_id as string,
+    product: r.product as string,
+    hazard: r.hazard as string,
+    severity: (r.severity as string | null) ?? null,
+    floorFtMsl: r.floor_ft_msl === null ? null : Number(r.floor_ft_msl),
+    ceilingFtMsl: r.ceiling_ft_msl === null ? null : Number(r.ceiling_ft_msl),
+    validFrom: new Date(r.valid_from as string).toISOString(),
+    validTo: new Date(r.valid_to as string).toISOString(),
+    rawText: (r.raw_text as string | null) ?? null,
+    station: (r.station as string | null) ?? null,
+    geometry: (r.geom as object | null) ?? null,
+  }));
+}
