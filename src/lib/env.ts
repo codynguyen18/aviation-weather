@@ -30,7 +30,14 @@ let cached: Env | null = null;
 
 export function env(): Env {
   if (!cached) {
-    cached = envSchema.parse(process.env);
+    // Treat empty-string env vars as unset. Hosting UIs (and bulk .env pastes)
+    // often create a variable with a blank value; without this, a blank
+    // optional key like ANTHROPIC_API_KEY would fail min(1) and crash boot.
+    const present: Record<string, string> = {};
+    for (const [k, v] of Object.entries(process.env)) {
+      if (typeof v === "string" && v.trim() !== "") present[k] = v;
+    }
+    cached = envSchema.parse(present);
   }
   return cached;
 }
