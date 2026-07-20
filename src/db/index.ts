@@ -12,7 +12,11 @@ import { env } from "@/lib/env";
 // them there and let idle connections release quickly.
 const onServerless = Boolean(process.env.VERCEL);
 const client = postgres(env().DATABASE_URL, {
-  max: 5,
+  // A briefing fans out many independent weather fetches + reads/writes; a
+  // slightly larger pool lets them run concurrently against the pooler
+  // instead of serializing (matters for long routes under a serverless
+  // time limit). On a persistent host the smaller pool is plenty.
+  max: onServerless ? 10 : 5,
   prepare: !onServerless,
   ...(onServerless ? { idle_timeout: 20 } : {}),
 });

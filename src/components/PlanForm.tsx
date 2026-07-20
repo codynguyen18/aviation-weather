@@ -130,16 +130,34 @@ export default function PlanForm() {
           aircraft: { fuelEnduranceMin },
         }),
       });
-      const body = await res.json();
+      // The response is usually JSON, but a serverless timeout returns a plain
+      // "An error occurred" page — read as text first and parse defensively.
+      const rawText = await res.text();
+      let body: {
+        error?: string; snapshotId?: string;
+        detail?: { candidates?: unknown };
+        problems?: { ident: string; status: string; candidates?: { ident: string; name: string; kind: string }[] }[];
+      } = {};
+      try { body = rawText ? JSON.parse(rawText) : {}; } catch { body = {}; }
+
       if (!res.ok) {
-        if (body.detail?.candidates) setProblems([body.detail]);
+        if (body.detail?.candidates) setProblems([body.detail as { ident: string; status: string; candidates?: { ident: string; name: string; kind: string }[] }]);
         else if (Array.isArray(body.problems)) setProblems(body.problems);
-        setError(body.error ?? `request failed (${res.status})`);
+
+        if (res.status === 429) {
+          setError(body.error ?? "You've hit the hourly briefing limit — try again shortly.");
+        } else if (!body.error && (res.status === 502 || res.status === 504 || res.status >= 500)) {
+          setError(
+            "This route was too long for the free hosting tier to finish in time (it timed out gathering weather across the whole route). Try a shorter leg, or add a fuel-stop waypoint in the middle to break it up.",
+          );
+        } else {
+          setError(body.error ?? `request failed (${res.status})`);
+        }
         return;
       }
       router.push(`/briefing/${body.snapshotId}`);
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError("Couldn't reach the server — check your connection and try again.");
     } finally {
       setBusy(false);
     }

@@ -14,6 +14,8 @@ export async function GET() {
       status: "ok",
       db: "connected",
       postgis: rows[0]?.postgis ?? "missing",
+      // Deployed commit (set by Vercel) so a deploy can be confirmed live.
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     });
   } catch (err) {
     logger.error({ err }, "health check failed");

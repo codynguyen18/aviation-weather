@@ -32,6 +32,28 @@ import { METERS_PER_NM } from "@/lib/geo";
 // to an immutable snapshot with full provenance. The LLM (M8) only ever sees
 // what this pipeline computed.
 
+// Run an async map with a bounded number of in-flight tasks — enough
+// concurrency to keep the connection pool busy on long routes, without firing
+// dozens of PostGIS queries at the database all at once.
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!, i);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+  return results;
+}
+
 // Defensive jsonb read: tolerate legacy double-encoded rows (string scalars).
 function parseJsonbArray<T>(v: unknown): T[] {
   if (Array.isArray(v)) return v as T[];
@@ -275,7 +297,10 @@ export async function generateBriefing(
   const assessments: SegmentAssessment[] = [];
   const usedSourceIds = new Map<string, string>(); // id -> role
 
-  for (const seg of route.segments) {
+  // Segments are independent, so evaluate them with bounded concurrency: a
+  // cross-country route is dozens of PostGIS round-trips that would otherwise
+  // serialize and blow past a serverless time limit.
+  const evaluateOne = async (seg: RouteSegment): Promise<SegmentAssessment> => {
     const terminalAirports = [
       ...new Set(
         [seg.startIdent, seg.endIdent].filter(
@@ -323,7 +348,13 @@ export async function generateBriefing(
           .reduce((a, s) => a + (Date.parse(s.time.exitUtc) - Date.parse(s.time.entryUtc)) / 60_000, 0),
       totalAirborneMin: route.totals.airborneMinutes,
     };
-    const assessment = evaluateSegment(ctx);
+    return evaluateSegment(ctx);
+  };
+
+  const evaluated = await mapWithConcurrency(route.segments, 6, evaluateOne);
+  for (let i = 0; i < route.segments.length; i++) {
+    const seg = route.segments[i]!;
+    const assessment = evaluated[i]!;
     assessments.push(assessment);
     for (const e of assessment.evaluations) {
       for (const id of e.sourceRecordIds) usedSourceIds.set(id, e.ruleId);
@@ -347,16 +378,19 @@ export async function generateBriefing(
     RETURNING id, created_at
   `;
   const snapshotId = snap!.id as string;
+  // These rows are independent — pipeline them through the pool instead of
+  // awaiting each in turn, so a long route's inserts don't serialize.
+  const writes: Promise<unknown>[] = [];
   for (const a of assessments) {
-    await sql`
+    writes.push(sql`
       INSERT INTO segment_assessments
         (snapshot_id, segment_seq, rating, confidence, summary, hard_stops)
       VALUES
         (${snapshotId}, ${a.segmentSeq}, ${a.rating}, ${a.confidence},
          ${a.summary}, ${JSON.stringify(a.hardStops)}::text::jsonb)
-    `;
+    `);
     for (const e of a.evaluations) {
-      await sql`
+      writes.push(sql`
         INSERT INTO rule_evaluations
           (snapshot_id, segment_seq, rule_id, rule_version, rule_class,
            result, measured, thresholds, confidence, explanation,
@@ -366,16 +400,17 @@ export async function generateBriefing(
            ${e.ruleClass}, ${e.result}, ${JSON.stringify(e.measured)}::text::jsonb,
            ${JSON.stringify(e.thresholds)}::text::jsonb, ${e.confidence}, ${e.explanation},
            ${e.isHardStop}, ${JSON.stringify(e.sourceRecordIds)}::text::jsonb)
-      `;
+      `);
     }
   }
   for (const [id, role] of usedSourceIds) {
-    await sql`
+    writes.push(sql`
       INSERT INTO briefing_source_links (snapshot_id, source_record_id, role)
       VALUES (${snapshotId}, ${id}, ${role})
       ON CONFLICT DO NOTHING
-    `;
+    `);
   }
+  await Promise.all(writes);
 
   return {
     snapshotId,
