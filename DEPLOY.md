@@ -5,13 +5,26 @@ first time; after that, updates deploy themselves whenever the code changes.
 
 The app needs three things to run:
 
-1. **A server** that runs the app itself (we'll use Railway — roughly $5/month).
-2. **A database** that remembers briefings and accounts (Railway provides this too; it must be the "PostGIS" flavor, which adds map math).
-3. **Three secret keys** you paste in once (explained below — two are free).
+1. **A server** that runs the app itself.
+2. **A database** that remembers briefings and accounts — it must be the
+   "PostGIS" flavor, which adds the map math.
+3. **A few secret keys** you paste in once (most are free).
+
+There are two supported hosting setups — pick one:
+
+- **Vercel + Neon** — run the app on Vercel (great if you already have an
+  account) with a free Neon database. See **[the Vercel guide below](#deploying-on-vercel--neon)**.
+- **Railway (all-in-one)** — app + database in one place, ~$5/month, no
+  code changes. See **[the Railway guide](#deploying-on-railway)**.
+
+Both need the same secret keys, collected in **Step 1** just below.
 
 ---
 
-## Step 1 — Collect your three keys
+## Step 1 — Collect your keys
+
+These are the same whichever host you pick. The **cookie secret (1c)** is
+required; the Resend and Anthropic keys are optional and can be added later.
 
 ### 1a. Sign-in email key (free — Resend)
 
@@ -28,9 +41,10 @@ Resend is the service that sends those emails.
 > If you later invite friends with other email addresses, Resend will ask you
 > to verify a domain — that's a later problem, not a today problem.
 >
-> **No key at all also works**: sign-in links are then printed into the
-> server's log (Railway → your app service → *Logs*), and you copy the link
-> from there into your browser. Clunky but fine for a first test.
+> **No key at all also works**: sign-in links are then printed into your
+> host's logs (Vercel: project → *Logs*; Railway: app service → *Logs*), and
+> you copy the link from there into your browser. Clunky but fine for a first
+> test.
 
 ### 1b. AI chat key (paid per use — Anthropic)
 
@@ -50,6 +64,87 @@ one at <https://generate-secret.vercel.app/32> (refresh for a new one) and
 save it in a note. Anything long and random works.
 
 ---
+
+## Deploying on Vercel + Neon
+
+You'll run the app on **Vercel** and its database on **Neon** — both have free
+tiers. First collect your keys from **[Step 1](#step-1--collect-your-keys)**
+(the cookie secret is required; the Resend and Anthropic keys are optional),
+then come back here.
+
+### V1 — Create the database (Neon)
+
+1. Go to <https://neon.tech>, sign in (your GitHub login works), and click
+   **New Project**. Pick a region near you and create it.
+2. Open your project's **SQL Editor** (left sidebar), paste this line, and
+   click Run — it switches on the map-math engine the app needs:
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS postgis;
+   ```
+
+3. Click **Connect** (top of the dashboard) and copy the **Pooled**
+   connection string — it's the one with `-pooler` in the address. Save it in
+   a note; this is your `DATABASE_URL`.
+
+### V2 — Put the app on Vercel
+
+1. Go to <https://vercel.com>, click **Add New… → Project**, and import your
+   `codynguyen18/aviation-weather` repo.
+2. Before clicking Deploy, open **Environment Variables** and add these
+   (Name on the left, Value on the right):
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | the Neon **pooled** string from V1 |
+   | `AUTH_SECRET` | the random secret from Step 1c |
+   | `UPSTREAM_USER_AGENT` | `aviation-weather (your-email@example.com)` — your real email |
+   | `RESEND_API_KEY` | your `re_...` key (optional — leave out for log-links) |
+   | `EMAIL_FROM` | `onboarding@resend.dev` |
+   | `ANTHROPIC_API_KEY` | your `sk-ant-...` key (optional) |
+
+3. Click **Deploy**. The build automatically creates your database tables.
+   When it goes green, Vercel shows your public address (like
+   `your-app.vercel.app`). Open it.
+
+   > If the very first build fails with a database error, it just means the
+   > env vars weren't saved before it started — add them under
+   > **Settings → Environment Variables**, then **Deployments → Redeploy**.
+
+### V3 — Load the airport list (one time)
+
+The app needs the worldwide airport database (~85,000 airports) loaded once.
+There's a one-click loader built in:
+
+1. On GitHub, open your repo → **Settings → Secrets and variables → Actions
+   → New repository secret**. Name it `DATABASE_URL`, paste your Neon pooled
+   string as the value, and save.
+2. Go to the repo's **Actions** tab → **Load airport data** (left list) →
+   **Run workflow**. It loads the airports into Neon (a couple of minutes).
+   Re-run it every month or two whenever you want fresh airport data.
+
+### V4 — First sign-in and a briefing
+
+1. Open your Vercel address → **Sign in** → enter your email → click the link
+   in the email. (No Resend key? The link is printed in Vercel under your
+   project → **Logs** — copy it into your browser.)
+2. **New flight plan** → enter a route (e.g. `KSTL` → `KOAK`), a departure
+   time, your aircraft numbers, and your personal minimums → **Generate
+   briefing**.
+
+### Good to know on Vercel
+
+- **Updates**: every push to your `main` branch redeploys automatically; your
+  data lives in Neon and survives deploys.
+- **Time limit**: Vercel's free plan caps each request at ~60 seconds. A
+  briefing usually finishes well under that, but if a government weather
+  server is slow, one might occasionally time out — just click Generate again.
+- **Costs**: Vercel free tier, Neon free tier, weather APIs free; only the
+  optional AI chat (Anthropic) costs a few cents per question.
+
+---
+
+## Deploying on Railway
 
 ## Step 2 — Create the app on Railway
 

@@ -11,7 +11,8 @@ import { AnthropicAdapter } from "@/lib/llm/adapter";
 import { runChat } from "@/lib/llm/chat";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// 60s is the ceiling on Vercel's Hobby plan; persistent hosts ignore this.
+export const maxDuration = 60;
 
 const bodySchema = z.object({
   conversationId: z.string().uuid().nullish(),

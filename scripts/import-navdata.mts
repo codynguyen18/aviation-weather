@@ -50,7 +50,8 @@ async function loadSources(): Promise<{ files: string[]; label: string }> {
 const { files, label } = await loadSources();
 const [airportsCsv, runwaysCsv, navaidsCsv] = files as [string, string, string];
 
-const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
+// prepare:false so this works through a transaction-mode pooler (Neon) too.
+const sql = postgres(databaseUrl, { max: 1, prepare: false, onnotice: () => {} });
 try {
   const result = await importOurAirports(sql, {
     airportsCsv,

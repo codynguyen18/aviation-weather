@@ -1,0 +1,23 @@
+name: Load airport data
+
+# One-click loader for the worldwide airport/runway/navaid dataset. Run it
+# once after first deploy, then re-run every month or two for fresh data.
+# Requires a repository secret named DATABASE_URL (your Neon connection
+# string). Runs on GitHub's servers, so it has no request time limit.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci || npm install
+      - run: npm run navdata:import
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          UPSTREAM_USER_AGENT: "aviation-weather (github-action)"

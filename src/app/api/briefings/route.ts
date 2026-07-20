@@ -13,7 +13,8 @@ import { checkRateLimit } from "@/lib/account/rate-limit";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// 60s is the ceiling on Vercel's Hobby plan; persistent hosts ignore this.
+export const maxDuration = 60;
 
 // POST /api/briefings — generate a briefing snapshot for a route request.
 // Signed-in users only; each briefing triggers a burst of upstream fetches,

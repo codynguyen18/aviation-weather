@@ -7,7 +7,9 @@ import postgres from "postgres";
 const url =
   process.env.DATABASE_URL ??
   "postgres://aviation:aviation@localhost:5432/aviation_weather";
-const sql = postgres(url, { max: 1 });
+// prepare:false keeps this compatible with transaction-mode poolers (e.g.
+// Neon's pooled endpoint) when migrations run in a Vercel build step.
+const sql = postgres(url, { max: 1, prepare: false });
 
 const dir = path.join(import.meta.dirname, "..", "drizzle");
 const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
